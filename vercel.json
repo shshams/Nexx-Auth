@@ -1,21 +1,6 @@
 {
   "version": 2,
-  "env": {
-    "VITE_FIREBASE_API_KEY": "AIzaSyDJKV-r6MTBqTVUUBxIN52IocHwyMZFGC8",
-    "VITE_FIREBASE_APP_ID": "1:876345307810:web:cee51db7417d4e3ea85dfb",
-    "VITE_FIREBASE_PROJECT_ID": "nexx-auth-project",
-    "DATABASE_URL": "postgresql://neondb_owner:npg_Xhkaeogf2v1M@ep-still-night-a2tmrl6m.eu-central-1.aws.neon.tech/neondb?sslmode=require",
-    "PGDATABASE": "neondb",
-    "PGHOST": "ep-still-night-a2tmrl6m.eu-central-1.aws.neon.tech",
-    "PGPORT": "5432",
-    "PGUSER": "neondb_owner",
-    "PGPASSWORD": "npg_Xhkaeogf2v1M"
-  },
   "builds": [
-    {
-      "src": "server/index.ts",
-      "use": "@vercel/node"
-    },
     {
       "src": "package.json",
       "use": "@vercel/static-build",
@@ -27,11 +12,19 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "server/index.ts"
+      "dest": "/api/index.js"
     },
     {
       "src": "/(.*)",
-      "dest": "dist/public/index.html"
+      "dest": "/dist/public/$1"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  }
 }

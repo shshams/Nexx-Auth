@@ -1,7 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
-import { createServer as createViteServer, createLogger, type ServerOptions } from "vite";
+import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
@@ -20,17 +20,15 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
-  const serverOptions: ServerOptions = {
+  const serverOptions = {
     middlewareMode: true,
     hmr: { server },
-    allowedHosts: true as true, // ✅ this fixes the TS2322 error
+    allowedHosts: true,
   };
 
   const vite = await createViteServer({
     ...viteConfig,
     configFile: false,
-    server: serverOptions,
-    appType: "custom",
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {
@@ -38,10 +36,11 @@ export async function setupVite(app: Express, server: Server) {
         process.exit(1);
       },
     },
+    server: serverOptions,
+    appType: "custom",
   });
 
   app.use(vite.middlewares);
-
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
@@ -50,14 +49,14 @@ export async function setupVite(app: Express, server: Server) {
         import.meta.dirname,
         "..",
         "client",
-        "index.html"
+        "index.html",
       );
 
-      // always reload the index.html file from disk in case it changes
+      // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`
+        `src="/src/main.tsx?v=${nanoid()}"`,
       );
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
@@ -73,7 +72,7 @@ export function serveStatic(app: Express) {
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`
+      `Could not find the build directory: ${distPath}, make sure to build the client first`,
     );
   }
 
