@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "env": {
+    "VITE_FIREBASE_API_KEY": "VITE_FIREBASE_API_KEY",
+    "VITE_FIREBASE_APP_ID": "1:295047060393:web:2a2e8a9f6e40ecd865c2b8",
+    "VITE_FIREBASE_PROJECT_ID": "phantom-auth-fb06c",
+    "DATABASE_URL": "postgresql://neondb_owner:npg_Xhkaeogf2v1M@ep-still-night-a2tmrl6m.eu-central-1.aws.neon.tech/neondb?sslmode=require",
+    "PGDATABASE": "neondb",
+    "PGHOST": "ep-still-night-a2tmrl6m.eu-central-1.aws.neon.tech",
+    "PGPORT": "5432",
+    "PGUSER": "neondb_owner",
+    "PGPASSWORD": "npg_Xhkaeogf2v1M"
+  },
+  "builds": [
+    {
+      "src": "server/index.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/public"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "server/index.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "dist/public/$1"
+    }
+  ]
+}
