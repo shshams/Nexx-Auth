@@ -46,8 +46,8 @@ async function initializeForVercel() {
     res.status(status).json({ message });
   });
   
-  // Serve static files in production
-  serveStatic(app);
+  // Don't serve static files in Vercel - handled by routes
+  // serveStatic(app);
 }
 
 // Initialize the app

@@ -1,0 +1,54 @@
+[03:19:15.211] Running build in Washington, D.C., USA (East) – iad1
+[03:19:15.212] Build machine configuration: 2 cores, 8 GB
+[03:19:15.248] Cloning github.com/shshams/nexx-auth (Branch: main, Commit: 10e4f64)
+[03:19:15.259] Skipping build cache, deployment was triggered without cache.
+[03:19:15.921] Cloning completed: 672.000ms
+[03:19:18.804] Running "vercel build"
+[03:19:19.708] Vercel CLI 44.3.0
+[03:19:19.966] WARN! Due to `builds` existing in your configuration file, the Build and Development Settings defined in your Project Settings will not apply. Learn More: https://vercel.link/unused-build-settings
+[03:19:20.803] Installing dependencies...
+[03:19:30.132] npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+[03:19:30.188] npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+[03:19:45.253] 
+[03:19:45.254] added 739 packages in 24s
+[03:19:45.255] 
+[03:19:45.255] 90 packages are looking for funding
+[03:19:45.256]   run `npm fund` for details
+[03:19:45.361] Running "npm run build"
+[03:19:45.534] 
+[03:19:45.535] > rest-express@1.0.0 build
+[03:19:45.535] > vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+[03:19:45.536] 
+[03:19:45.927] [36mvite v5.4.14 [32mbuilding for production...[36m[39m
+[03:19:46.006] transforming...
+[03:19:46.367] Browserslist: browsers data (caniuse-lite) is 9 months old. Please run:
+[03:19:46.367]   npx update-browserslist-db@latest
+[03:19:46.367]   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[03:19:54.588] [32m✓[39m 1756 modules transformed.
+[03:19:55.138] rendering chunks...
+[03:19:55.158] computing gzip size...
+[03:19:55.189] [2m../dist/public/[22m[32mindex.html                 [39m[1m[2m  0.86 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[03:19:55.190] [2m../dist/public/[22m[2massets/[22m[35mindex-BWNvSllO.css  [39m[1m[2m 83.34 kB[22m[1m[22m[2m │ gzip:  14.17 kB[22m
+[03:19:55.190] [2m../dist/public/[22m[2massets/[22m[36mindex-ChBFNaFr.js   [39m[1m[33m845.54 kB[39m[22m[2m │ gzip: 209.13 kB[22m
+[03:19:55.191] [33m
+[03:19:55.193] (!) Some chunks are larger than 500 kB after minification. Consider:
+[03:19:55.193] - Using dynamic import() to code-split the application
+[03:19:55.194] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[03:19:55.195] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[03:19:55.196] [32m✓ built in 9.23s[39m
+[03:19:55.272] 
+[03:19:55.273]   dist/index.js  126.2kb
+[03:19:55.273] 
+[03:19:55.273] ⚡ Done in 19ms
+[03:19:55.695] Using TypeScript 5.6.3 (local user-provided)
+[03:20:05.141] server/vite.ts(39,5): error TS2322: Type '{ middlewareMode: boolean; hmr: { server: Server<typeof IncomingMessage, typeof ServerResponse>; }; allowedHosts: boolean; }' is not assignable to type 'ServerOptions'.
+[03:20:05.142]   Types of property 'allowedHosts' are incompatible.
+[03:20:05.142]     Type 'boolean' is not assignable to type 'true | string[] | undefined'.
+[03:20:05.142] 
+[03:20:30.309] Build Completed in /vercel/output [1m]
+[03:20:30.987] Deploying outputs...
+[03:20:39.664] 
+[03:20:39.817] Deployment completed
+[03:21:30.053] Uploading build cache [116.66 MB]...
+[03:21:32.127] Build cache uploaded: 2.081s
+[03:21:34.457] Exiting build container

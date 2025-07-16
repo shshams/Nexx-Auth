@@ -5,8 +5,8 @@ import { execSync } from 'child_process';
 console.log('Building frontend...');
 await build();
 
-// Build the API for Vercel
+// Build the API for Vercel (skip TypeScript checking for problematic files)
 console.log('Building API...');
-execSync('npx esbuild api/index.ts --platform=node --packages=external --bundle --format=esm --outfile=api/index.js', { stdio: 'inherit' });
+execSync('npx esbuild api/index.ts --platform=node --packages=external --bundle --format=esm --outfile=api/index.js --external:ws', { stdio: 'inherit' });
 
 console.log('Build complete!');

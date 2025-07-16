@@ -36,9 +36,10 @@ Set these in your Vercel dashboard under Project Settings > Environment Variable
 
 ### 2. Configure Build Settings
 
-- **Build Command**: `npm run build`
+- **Build Command**: `node vercel-build.js`
 - **Output Directory**: `dist/public`
 - **Install Command**: `npm install`
+- **Node.js Version**: `18.x`
 
 ### 3. Add Environment Variables
 

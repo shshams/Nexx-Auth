@@ -22,9 +22,8 @@ SESSION_SECRET=your_random_session_secret
 ```
 
 ## Step 3: Configure Build Settings
-- Build Command: `npm run build`
-- Output Directory: `dist/public`
-- Install Command: `npm install`
+The build settings are now handled by vercel.json, so you don't need to configure them manually in the Vercel dashboard. Just make sure:
+- Node.js Version: `18.x` (set in dashboard if needed)
 
 ## Step 4: Deploy
 Click "Deploy" and wait for the build to complete.
