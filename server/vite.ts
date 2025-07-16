@@ -5,13 +5,6 @@ import { createServer as createViteServer, createLogger, type ServerOptions } fr
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
-import { type ServerOptions } from "vite";
-
-const serverOptions: ServerOptions = {
-  middlewareMode: true,
-  hmr: { server },
-  allowedHosts: true,
-};
 
 const viteLogger = createLogger();
 
@@ -30,7 +23,7 @@ export async function setupVite(app: Express, server: Server) {
   const serverOptions: ServerOptions = {
     middlewareMode: true,
     hmr: { server },
-    allowedHosts: true,
+    allowedHosts: true as true, // ✅ literal type fix
   };
 
   const vite = await createViteServer({
@@ -57,14 +50,14 @@ export async function setupVite(app: Express, server: Server) {
         import.meta.dirname,
         "..",
         "client",
-        "index.html",
+        "index.html"
       );
 
-      // always reload the index.html file from disk incase it changes
+      // always reload the index.html file from disk in case it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`,
+        `src="/src/main.tsx?v=${nanoid()}"`
       );
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
@@ -80,7 +73,7 @@ export function serveStatic(app: Express) {
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+      `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
   }
 
