@@ -5,6 +5,13 @@ import { createServer as createViteServer, createLogger, type ServerOptions } fr
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
+import { type ServerOptions } from "vite";
+
+const serverOptions: ServerOptions = {
+  middlewareMode: true,
+  hmr: { server },
+  allowedHosts: true,
+};
 
 const viteLogger = createLogger();
 
