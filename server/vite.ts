@@ -23,12 +23,14 @@ export async function setupVite(app: Express, server: Server) {
   const serverOptions: ServerOptions = {
     middlewareMode: true,
     hmr: { server },
-    allowedHosts: true as true, // ✅ literal type fix
+    allowedHosts: true as true, // ✅ this fixes the TS2322 error
   };
 
   const vite = await createViteServer({
     ...viteConfig,
     configFile: false,
+    server: serverOptions,
+    appType: "custom",
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {
@@ -36,8 +38,6 @@ export async function setupVite(app: Express, server: Server) {
         process.exit(1);
       },
     },
-    server: serverOptions,
-    appType: "custom",
   });
 
   app.use(vite.middlewares);
