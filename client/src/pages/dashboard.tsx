@@ -46,7 +46,8 @@ import {
 } from "lucide-react";
 
 interface Application {
-  id: number;
+  _id: string;
+  id: string;
   name: string;
   description: string;
   apiKey: string;
@@ -64,7 +65,8 @@ interface Application {
 }
 
 interface AppUser {
-  id: number;
+  _id: string;
+  id: string;
   username: string;
   email: string;
   isActive: boolean;
@@ -103,7 +105,7 @@ export default function Dashboard() {
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<Application | null>(null);
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
-  const [visibleKeys, setVisibleKeys] = useState<Set<number>>(new Set());
+  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [deleteConfirmDialogOpen, setDeleteConfirmDialogOpen] = useState(false);
   const [appToDelete, setAppToDelete] = useState<Application | null>(null);
   const { toast } = useToast();
@@ -123,7 +125,7 @@ export default function Dashboard() {
 
   // Fetch users for selected application
   const { data: appUsers = [] } = useQuery<AppUser[]>({
-    queryKey: ["/api/applications", selectedApp?.id, "users"],
+    queryKey: ["/api/applications", selectedApp?._id, "users"],
     enabled: !!selectedApp,
   });
 
@@ -166,10 +168,10 @@ export default function Dashboard() {
         ...(data.hwid && { hwid: data.hwid })
       };
 
-      return apiRequest(`/api/applications/${selectedApp.id}/users`, { method: "POST", body: payload });
+      return apiRequest(`/api/applications/${selectedApp._id}/users`, { method: "POST", body: payload });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/applications", selectedApp?.id, "users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/applications", selectedApp?._id, "users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       setNewUserData({ username: "", email: "", password: "", expiresAt: "", hwid: "" });
       setIsNewUserDialogOpen(false);
@@ -189,7 +191,7 @@ export default function Dashboard() {
 
   // Update application mutation
   const updateApplicationMutation = useMutation({
-    mutationFn: async (data: { id: number; updates: Partial<Application> }) => {
+    mutationFn: async (data: { id: string; updates: Partial<Application> }) => {
       return apiRequest(`/api/applications/${data.id}`, { method: "PUT", body: data.updates });
     },
     onSuccess: () => {
@@ -212,11 +214,11 @@ export default function Dashboard() {
 
   // Update user mutation
   const updateUserMutation = useMutation({
-    mutationFn: async (data: { appId: number; userId: number; updates: Partial<AppUser> }) => {
+    mutationFn: async (data: { appId: string; userId: string; updates: Partial<AppUser> }) => {
       return apiRequest(`/api/applications/${data.appId}/users/${data.userId}`, { method: "PUT", body: data.updates });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/applications", selectedApp?.id, "users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/applications", selectedApp?._id, "users"] });
       setIsEditUserDialogOpen(false);
       setEditingUser(null);
       toast({
@@ -235,11 +237,11 @@ export default function Dashboard() {
 
   // Pause user mutation
   const pauseUserMutation = useMutation({
-    mutationFn: async (data: { appId: number; userId: number }) => {
+    mutationFn: async (data: { appId: string; userId: string }) => {
       return apiRequest(`/api/applications/${data.appId}/users/${data.userId}/pause`, { method: "PUT" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/applications", selectedApp?.id, "users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/applications", selectedApp?._id, "users"] });
       toast({
         title: "Success",
         description: "User paused successfully",
@@ -256,11 +258,11 @@ export default function Dashboard() {
 
   // Unpause user mutation
   const unpauseUserMutation = useMutation({
-    mutationFn: async (data: { appId: number; userId: number }) => {
+    mutationFn: async (data: { appId: string; userId: string }) => {
       return apiRequest(`/api/applications/${data.appId}/users/${data.userId}/unpause`, { method: "PUT" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/applications", selectedApp?.id, "users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/applications", selectedApp?._id, "users"] });
       toast({
         title: "Success",
         description: "User unpaused successfully",
@@ -277,11 +279,11 @@ export default function Dashboard() {
 
   // Delete user mutation
   const deleteUserMutation = useMutation({
-    mutationFn: async (data: { appId: number; userId: number }) => {
+    mutationFn: async (data: { appId: string; userId: string }) => {
       return apiRequest(`/api/applications/${data.appId}/users/${data.userId}`, { method: "DELETE" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/applications", selectedApp?.id, "users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/applications", selectedApp?._id, "users"] });
       toast({
         title: "Success",
         description: "User deleted successfully",
@@ -387,7 +389,7 @@ export default function Dashboard() {
 
   const confirmDeleteApplication = () => {
     if (appToDelete) {
-      deleteApplicationMutation.mutate(appToDelete.id);
+      deleteApplicationMutation.mutate(appToDelete._id);
       setDeleteConfirmDialogOpen(false);
       setAppToDelete(null);
     }
@@ -600,7 +602,7 @@ export default function Dashboard() {
                     </TableHeader>
                     <TableBody>
                       {applications.map((app: Application) => (
-                        <TableRow key={app.id}>
+                        <TableRow key={app._id}>
                           <TableCell>
                             <div>
                               <div className="font-medium">{app.name}</div>
@@ -610,7 +612,7 @@ export default function Dashboard() {
                             </div>
                           </TableCell>
                           <TableCell className="font-mono text-sm">
-                            {maskKey(app.apiKey, visibleKeys.has(app.id))}
+                            {maskKey(app.apiKey, visibleKeys.has(app._id))}
                           </TableCell>
                           <TableCell>
                             <Badge variant={app.isActive ? "default" : "secondary"}>
@@ -625,9 +627,9 @@ export default function Dashboard() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => toggleKeyVisibility(app.id)}
+                                onClick={() => toggleKeyVisibility(app._id)}
                               >
-                                {visibleKeys.has(app.id) ? (
+                                {visibleKeys.has(app._id) ? (
                                   <EyeOff className="h-4 w-4" />
                                 ) : (
                                   <Eye className="h-4 w-4" />
@@ -651,7 +653,7 @@ export default function Dashboard() {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Link href={`/app/${app.id}`}>
+                              <Link href={`/app/${app._id}`}>
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -820,7 +822,7 @@ export default function Dashboard() {
                       {appUsers.map((user: AppUser) => {
                         const isExpired = user.expiresAt && new Date() > new Date(user.expiresAt);
                         return (
-                          <TableRow key={user.id}>
+                          <TableRow key={user._id}>
                             <TableCell className="font-medium">{user.username}</TableCell>
                             <TableCell>{user.email}</TableCell>
                             <TableCell>
@@ -895,7 +897,7 @@ export default function Dashboard() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => unpauseUserMutation.mutate({ appId: selectedApp.id, userId: user.id })}
+                                    onClick={() => unpauseUserMutation.mutate({ appId: selectedApp._id, userId: user._id })}
                                     title="Unpause User"
                                     className="text-green-600 hover:text-green-700"
                                   >
@@ -905,7 +907,7 @@ export default function Dashboard() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => pauseUserMutation.mutate({ appId: selectedApp.id, userId: user.id })}
+                                    onClick={() => pauseUserMutation.mutate({ appId: selectedApp._id, userId: user._id })}
                                     title="Pause User"
                                     className="text-orange-600 hover:text-orange-700"
                                   >
@@ -915,7 +917,7 @@ export default function Dashboard() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => deleteUserMutation.mutate({ appId: selectedApp.id, userId: user.id })}
+                                  onClick={() => deleteUserMutation.mutate({ appId: selectedApp._id, userId: user._id })}
                                   title="Delete User"
                                   className="text-red-600 hover:text-red-700"
                                 >
@@ -1112,7 +1114,7 @@ export default function Dashboard() {
                 onClick={() => {
                   if (editingApp) {
                     updateApplicationMutation.mutate({ 
-                      id: editingApp.id, 
+                      id: editingApp._id, 
                       updates: {
                         name: editingApp.name,
                         description: editingApp.description,
@@ -1220,8 +1222,8 @@ export default function Dashboard() {
                 onClick={() => {
                   if (editingUser && selectedApp) {
                     updateUserMutation.mutate({ 
-                      appId: selectedApp.id,
-                      userId: editingUser.id, 
+                      appId: selectedApp._id,
+                      userId: editingUser._id, 
                       updates: {
                         username: editingUser.username,
                         email: editingUser.email,
