@@ -5,8 +5,8 @@ import passport from "passport";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
-import MemoryStore from "memorystore";
-import { storage } from "./mongo-storage";
+import connectPg from "connect-pg-simple";
+import { storage } from "./storage";
 import admin from "firebase-admin";
 
 // Initialize Firebase Admin SDK
@@ -38,11 +38,12 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  
-  // Use in-memory session store to avoid database connection issues
-  const MemoryStoreClass = MemoryStore(session);
-  const sessionStore = new MemoryStoreClass({
-    checkPeriod: 86400000, // prune expired entries every 24h
+  const pgStore = connectPg(session);
+  const sessionStore = new pgStore({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: false,
+    ttl: sessionTtl,
+    tableName: "sessions",
   });
   
   // Generate a default session secret if not provided (for deployment environments)

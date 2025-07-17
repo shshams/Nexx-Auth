@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import { storage } from "./mongo-storage";
+import { storage } from "./storage";
 
 export interface PermissionUser {
   id: string;
