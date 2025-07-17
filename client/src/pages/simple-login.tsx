@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, LogIn, CheckCircle, Info, Users, Building, Globe } from "lucide-react";
-import { Link, useLocation } from "wouter";
-import { useSimpleAuth } from "@/hooks/useSimpleAuth";
+import { Shield, LogIn, Info, Building } from "lucide-react";
+import { Link } from "wouter";
 
 export default function SimpleLogin() {
   const [username, setUsername] = useState("");
@@ -14,29 +14,11 @@ export default function SimpleLogin() {
   const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { isAuthenticated } = useSimpleAuth();
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      setLocation('/');
-    }
-  }, [isAuthenticated, setLocation]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!username || !password) {
-      toast({
-        title: "Error",
-        description: "Please enter both username and password",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setLoading(true);
-    
+
     try {
       const response = await fetch('/api/auth/simple-login', {
         method: 'POST',
@@ -90,135 +72,96 @@ export default function SimpleLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-nexx-primary via-nexx-secondary to-nexx-accent relative overflow-hidden">
-      {/* Background effects */}
-      <div className="absolute inset-0 bg-black/10"></div>
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent"></div>
-      
-      <div className="relative z-10 container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8 items-center min-h-[calc(100vh-4rem)]">
-          {/* Left side - Login Form */}
-          <div className="flex flex-col justify-center space-y-6">
-            <div className="text-center lg:text-left">
-              <Link href="/">
-                <div className="flex items-center justify-center lg:justify-start space-x-2 mb-6">
-                  <Shield className="h-8 w-8 text-white" />
-                  <span className="text-2xl font-bold text-white">Nexx Auth</span>
-                </div>
-              </Link>
-              <h1 className="text-4xl font-bold text-white mb-2">
-                Welcome Back
-              </h1>
-              <p className="text-lg text-white/80 mb-8">
-                Sign in to your account to continue
-              </p>
-            </div>
-
-            <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl text-center text-nexx-primary">
-                  Sign In
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <form onSubmit={handleLogin} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="username" className="text-sm font-medium text-gray-700">
-                      Username
-                    </Label>
-                    <Input
-                      id="username"
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Enter your username"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexx-primary focus:border-transparent text-base"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                      Password
-                    </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexx-primary focus:border-transparent text-base"
-                      required
-                    />
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    disabled={loading}
-                    className="w-full bg-nexx-primary hover:bg-nexx-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
-                  >
-                    <LogIn className="h-5 w-5" />
-                    <span>{loading ? "Signing in..." : "Continue with Nexx Auth"}</span>
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right side - Hero Section */}
-          <div className="hidden lg:flex flex-col justify-center space-y-6 text-white">
-            <div className="space-y-4">
-              <h2 className="text-4xl font-bold">
-                Multi-Tenant Authentication System
-              </h2>
-              <p className="text-xl text-white/90">
-                Secure, scalable, and easy to integrate authentication solution for your applications.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6">
-              <div className="flex items-start space-x-3">
-                <CheckCircle className="h-6 w-6 text-green-400 mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-lg">Enterprise Security</h3>
-                  <p className="text-white/80">
-                    Hardware ID locking, version control, and comprehensive blacklisting
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start space-x-3">
-                <Users className="h-6 w-6 text-blue-400 mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-lg">User Management</h3>
-                  <p className="text-white/80">
-                    Complete user lifecycle management with role-based permissions
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start space-x-3">
-                <Building className="h-6 w-6 text-purple-400 mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-lg">Multi-Application</h3>
-                  <p className="text-white/80">
-                    Manage multiple applications with isolated user environments
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-start space-x-3">
-                <Globe className="h-6 w-6 text-cyan-400 mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-lg">Global Integration</h3>
-                  <p className="text-white/80">
-                    RESTful API with webhooks for seamless third-party integration
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <Link href="/" className="flex items-center justify-center mb-6">
+            <Shield className="h-10 w-10 primary-color mr-3" />
+            <span className="text-2xl font-bold text-gray-900">Nexx Auth</span>
+          </Link>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Access Your Account
+          </h2>
+          <p className="text-gray-600">
+            Sign in to access your authentication environment
+          </p>
         </div>
+
+        <Card className="professional-card shadow-lg">
+          <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center text-xl font-semibold">
+              <Building className="h-5 w-5 mr-2 primary-color" />
+              Multi-Tenant Authentication
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="professional-card bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <Info className="h-5 w-5 text-blue-600 mr-3 mt-1" />
+                  <div>
+                    <p className="text-sm font-semibold text-blue-800 mb-1">
+                      Enterprise Authentication System
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      Each account creates its own isolated authentication environment with unique API keys and user management.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-sm font-medium text-gray-700">
+                    Username
+                  </Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter your username"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    Password
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full professional-button py-3 px-4 rounded-lg font-semibold text-lg transition-all duration-200"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                      <span>Authenticating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-5 h-5 mr-3" />
+                      <span>Continue with Nexx Auth</span>
+                    </>
+                  )}
+                </Button>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
