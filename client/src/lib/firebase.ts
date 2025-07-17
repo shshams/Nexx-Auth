@@ -11,12 +11,12 @@ import {
 } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
-  messagingSenderId: "123456789",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: "AIzaSyDJKV-r6MTBqTVUUBxIN52IocHwyMZFGC8",
+  authDomain: "nexx-auth-project.firebaseapp.com",
+  projectId: "nexx-auth-project",
+  storageBucket: "nexx-auth-project.firebasestorage.app",
+  messagingSenderId: "123456789", // your real sender ID here
+  appId: "1:876345307810:web:cee51db7417d4e3ea85dfb",
 };
 
 // Initialize Firebase
