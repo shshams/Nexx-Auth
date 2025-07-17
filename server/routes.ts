@@ -15,6 +15,8 @@ import {
   insertBlacklistSchema
 } from "@shared/schema";
 import { z } from "zod";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 // Middleware to validate API key for external API access
 async function validateApiKey(req: any, res: any, next: any) {
@@ -103,6 +105,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Simple JSON-based authentication route
+  app.post('/api/auth/simple-login', async (req: any, res) => {
+    try {
+      const { username, password } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Username and password are required" 
+        });
+      }
+
+      console.log('Simple login attempt:', { username });
+
+      // Read userauth.json file
+      const userAuthPath = join(process.cwd(), 'userauth.json');
+      const userAuthData = JSON.parse(readFileSync(userAuthPath, 'utf8'));
+
+      // Find user in JSON file
+      const foundUser = userAuthData.find((user: any) => 
+        user.username === username && user.password === password
+      );
+
+      if (!foundUser) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Invalid username or password" 
+        });
+      }
+
+      // Generate a unique user ID based on username
+      const userId = `simple_${username}`;
+      
+      // Create or update user in our system
+      const userData = {
+        id: userId,
+        email: `${username}@nexxauth.local`,
+        firstName: username,
+        lastName: '',
+        profileImageUrl: null,
+      };
+
+      const user = await storage.upsertUser(userData);
+      console.log('User upserted:', user);
+
+      // Create session
+      (req.session as any).user = {
+        claims: {
+          sub: userId,
+          email: `${username}@nexxauth.local`,
+        }
+      };
+
+      // Save session explicitly
+      await new Promise((resolve, reject) => {
+        req.session.save((err: any) => {
+          if (err) reject(err);
+          else resolve(true);
+        });
+      });
+
+      console.log('Session created and saved successfully');
+
+      res.json({
+        success: true,
+        message: "Login successful! Redirecting to dashboard...",
+        account_id: userId,
+        user: user
+      });
+
+    } catch (error) {
+      console.error("Simple login error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Authentication failed: " + (error instanceof Error ? error.message : 'Unknown error')
+      });
     }
   });
 

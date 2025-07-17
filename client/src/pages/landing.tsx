@@ -12,7 +12,7 @@ export default function Landing() {
   const [showContent, setShowContent] = useState(false);
 
   const handleLogin = () => {
-    window.location.href = "/firebase-login";
+    window.location.href = "/simple-login";
   };
 
   const handleLoadingComplete = () => {

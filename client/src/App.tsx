@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { useAuth } from "@/hooks/useAuth";
+import { useSimpleAuth } from "@/hooks/useSimpleAuth";
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
 import AppManagement from "@/pages/app-management";
@@ -17,11 +17,12 @@ import CodeEditor from "@/pages/code-editor";
 import UserManagement from "@/pages/user-management";
 import LicenseKeys from "@/pages/license-keys";
 import FirebaseLogin from "@/pages/firebase-login";
+import SimpleLogin from "@/pages/simple-login";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useSimpleAuth();
 
   if (isLoading) {
     return (
@@ -40,6 +41,8 @@ function Router() {
         <>
           <Route path="/" component={Landing} />
           <Route path="/firebase-login" component={FirebaseLogin} />
+          <Route path="/simple-login" component={SimpleLogin} />
+          <Route path="/login" component={SimpleLogin} />
           <Route path="/user-management" component={UserManagement} />
         </>
       ) : (

@@ -2,13 +2,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield, FileText, Users, DollarSign, LogIn, LogOut, Settings, Webhook, Ban, Home, Moon, Sun, Activity, Code, Crown, UserCog } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+import { useSimpleAuth } from "@/hooks/useSimpleAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { signOutUser } from "@/lib/firebase";
 
 export default function Header() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useSimpleAuth();
   const [location, setLocation] = useLocation();
   const { theme, toggleTheme } = useTheme();
   
@@ -27,13 +26,9 @@ export default function Header() {
   const handleLogout = async () => {
     try {
       console.log("Logout button clicked");
-      await signOutUser();
-      // Redirect to home page after logout
-      window.location.href = '/';
+      await logout();
     } catch (error) {
       console.error("Logout error:", error);
-      // Force redirect even if logout fails
-      window.location.href = '/';
     }
   };
 
