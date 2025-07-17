@@ -170,12 +170,12 @@ export const insertLicenseKeySchema = z.object({
 
 export const insertAppUserSchema = z.object({
   username: z.string().min(1),
-  email: z.string().email().optional(),
+  email: z.union([z.string().email(), z.literal(""), z.null(), z.undefined()]).optional().transform(val => val === "" || val === undefined ? null : val),
   password: z.string().min(6),
   hwid: z.string().optional(),
   role: z.string().default('user'),
   permissions: z.array(z.string()).default([]),
-  expiresAt: z.date().optional(),
+  expiresAt: z.union([z.string(), z.date(), z.null(), z.undefined()]).optional().transform(val => val && typeof val === 'string' ? new Date(val) : val),
   licenseKey: z.string().optional(),
 });
 

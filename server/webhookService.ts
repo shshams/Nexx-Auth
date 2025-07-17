@@ -1,13 +1,13 @@
 import crypto from 'crypto';
 import { storage } from './mongo-storage';
-import type { Webhook, ActivityLog } from '@shared/schema';
+import type { Webhook, ActivityLog } from '@shared/mongo-schema';
 
 export interface WebhookPayload {
   event: string;
   timestamp: string;
-  application_id: number;
+  application_id: string;
   user_data?: {
-    id: number;
+    id: string;
     username: string;
     email?: string;
     hwid?: string;
