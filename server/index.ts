@@ -2,8 +2,19 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { config, validateRequiredEnvVars } from "./environment";
+import { connectMongoose } from "./mongodb";
 
 const app = express();
+
+// Initialize MongoDB connection
+async function initializeApp() {
+  try {
+    await connectMongoose();
+  } catch (error) {
+    console.error('Failed to connect to MongoDB:', error);
+    process.exit(1);
+  }
+}
 
 // Global server compatibility settings
 app.use((req, res, next) => {
@@ -29,6 +40,13 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '10mb' })); // Increased limit for global compatibility
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// Initialize MongoDB and start server
+initializeApp().then(() => {
+  console.log('MongoDB initialized successfully');
+}).catch(error => {
+  console.error('MongoDB initialization failed:', error);
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage } from "./mongo-storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { requirePermission, requireRole, PERMISSIONS, ROLES, getUserPermissions } from "./permissions";
 import { webhookService } from "./webhookService";
@@ -13,7 +13,7 @@ import {
   loginSchema,
   insertWebhookSchema,
   insertBlacklistSchema
-} from "@shared/schema";
+} from "@shared/mongo-schema";
 import { z } from "zod";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -376,7 +376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/applications/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       const application = await storage.getApplication(applicationId);
       
       if (!application) {
@@ -399,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update application with enhanced features (PUT)
   app.put('/api/applications/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       const application = await storage.getApplication(applicationId);
       
       if (!application) {
@@ -432,7 +432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update application with enhanced features (PATCH)
   app.patch('/api/applications/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       const application = await storage.getApplication(applicationId);
       
       if (!application) {
@@ -466,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/applications/:id', isAuthenticated, async (req: any, res) => {
     try {
       console.log("DELETE application request received for ID:", req.params.id);
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       const application = await storage.getApplication(applicationId);
       
       if (!application) {
@@ -504,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get real-time application statistics
   app.get('/api/applications/:id/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       const application = await storage.getApplication(applicationId);
       
       if (!application) {
@@ -557,7 +557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get active sessions for an application
   app.get('/api/applications/:id/sessions', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       const application = await storage.getApplication(applicationId);
       
       if (!application) {
@@ -583,7 +583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all license keys for an application
   app.get('/api/applications/:id/licenses', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       const application = await storage.getApplication(applicationId);
       
       if (!application) {
@@ -606,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new license key
   app.post('/api/applications/:id/licenses', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       const application = await storage.getApplication(applicationId);
       
       if (!application) {
@@ -633,7 +633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate a random license key (GET route for generating default values)
   app.get('/api/applications/:id/licenses/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       const application = await storage.getApplication(applicationId);
       
       if (!application) {
@@ -665,7 +665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate a random license key (POST route for creating)
   app.post('/api/applications/:id/licenses/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       const application = await storage.getApplication(applicationId);
       
       if (!application) {
@@ -705,8 +705,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete a license key
   app.delete('/api/applications/:id/licenses/:licenseId', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
-      const licenseId = parseInt(req.params.licenseId);
+      const applicationId = req.params.id;
+      const licenseId = req.params.licenseId;
       
       const application = await storage.getApplication(applicationId);
       if (!application) {
@@ -737,7 +737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/applications/:id/users', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       console.log(`Fetching users for application ${applicationId}`);
       
       const application = await storage.getApplication(applicationId);
@@ -765,7 +765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/applications/:id/users', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
+      const applicationId = req.params.id;
       const application = await storage.getApplication(applicationId);
       
       if (!application) {
@@ -840,8 +840,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update app user
   app.put('/api/applications/:id/users/:userId', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
-      const userId = parseInt(req.params.userId);
+      const applicationId = req.params.id;
+      const userId = req.params.userId;
       
       const application = await storage.getApplication(applicationId);
       if (!application) {
@@ -881,8 +881,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Pause app user
   app.post('/api/applications/:id/users/:userId/pause', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
-      const userId = parseInt(req.params.userId);
+      const applicationId = req.params.id;
+      const userId = req.params.userId;
       
       const application = await storage.getApplication(applicationId);
       if (!application) {
@@ -915,8 +915,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Unpause app user
   app.post('/api/applications/:id/users/:userId/unpause', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
-      const userId = parseInt(req.params.userId);
+      const applicationId = req.params.id;
+      const userId = req.params.userId;
       
       const application = await storage.getApplication(applicationId);
       if (!application) {
@@ -949,8 +949,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete app user
   app.delete('/api/applications/:id/users/:userId', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
-      const userId = parseInt(req.params.userId);
+      const applicationId = req.params.id;
+      const userId = req.params.userId;
       
       const application = await storage.getApplication(applicationId);
       if (!application) {
@@ -983,8 +983,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Reset user HWID
   app.post('/api/applications/:id/users/:userId/reset-hwid', isAuthenticated, async (req: any, res) => {
     try {
-      const applicationId = parseInt(req.params.id);
-      const userId = parseInt(req.params.userId);
+      const applicationId = req.params.id;
+      const userId = req.params.userId;
       
       const application = await storage.getApplication(applicationId);
       if (!application) {
@@ -1734,7 +1734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/webhooks/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const webhookId = parseInt(req.params.id);
+      const webhookId = req.params.id;
       const userId = req.user.claims.sub;
       const validatedData = insertWebhookSchema.partial().parse(req.body);
       
@@ -1763,7 +1763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/webhooks/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const webhookId = parseInt(req.params.id);
+      const webhookId = req.params.id;
       const userId = req.user.claims.sub;
       
       // Check ownership
@@ -1838,7 +1838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/blacklist/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const entryId = parseInt(req.params.id);
+      const entryId = req.params.id;
       const userId = req.user.claims.sub;
       
       // Get the blacklist entry and verify ownership
@@ -1877,12 +1877,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (applicationId) {
         // Get logs for specific application
-        const application = await storage.getApplication(parseInt(applicationId));
+        const application = await storage.getApplication(applicationId);
         if (!application || application.userId !== userId) {
           return res.status(403).json({ message: "Access denied" });
         }
         
-        const logs = await storage.getActivityLogs(parseInt(applicationId));
+        const logs = await storage.getActivityLogs(applicationId);
         res.json(logs);
       } else {
         // Get logs for all user's applications
@@ -1909,7 +1909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/activity-logs/user/:userId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const appUserId = parseInt(req.params.userId);
+      const appUserId = req.params.userId;
       
       // Get the app user and verify ownership
       const appUser = await storage.getAppUser(appUserId);

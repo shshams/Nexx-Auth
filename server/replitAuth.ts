@@ -6,7 +6,7 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import MemoryStore from "memorystore";
-import { storage } from "./storage";
+import { storage } from "./mongo-storage";
 import admin from "firebase-admin";
 
 // Initialize Firebase Admin SDK

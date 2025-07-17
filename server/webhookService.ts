@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { storage } from './storage';
+import { storage } from './mongo-storage';
 import type { Webhook, ActivityLog } from '@shared/schema';
 
 export interface WebhookPayload {

@@ -17,22 +17,22 @@ NexxAuth is a comprehensive authentication system built as a multi-tenant SaaS p
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
-- **Database**: PostgreSQL with Drizzle ORM
-- **Session Management**: express-session with PostgreSQL store
-- **Authentication**: Dual authentication system (Firebase + custom session management)
+- **Database**: MongoDB with Mongoose ODM
+- **Session Management**: express-session with in-memory store
+- **Authentication**: Custom JSON-based authentication system
 - **API Design**: RESTful API with multi-tenant isolation
 - **Security**: CORS, rate limiting, API key validation, input sanitization
 
 ### Database Schema
-The system uses a multi-tenant architecture with the following key tables:
-- `users` - Main user accounts (Firebase authenticated)
+The system uses a multi-tenant architecture with MongoDB collections:
+- `users` - Main user accounts (custom authenticated)
 - `applications` - User-created applications with unique API keys
-- `app_users` - End users for each application (isolated per tenant)
-- `license_keys` - License management system
+- `appusers` - End users for each application (isolated per tenant)
+- `licensekeys` - License management system
 - `webhooks` - Webhook configuration for real-time notifications
-- `blacklist` - IP/username/email/HWID blocking system
-- `activity_logs` - Comprehensive audit trail
-- `sessions` - Session storage for authentication
+- `blacklistentries` - IP/username/email/HWID blocking system
+- `activitylogs` - Comprehensive audit trail
+- `activesessions` - Session storage for authentication
 
 ## Key Components
 
@@ -124,9 +124,9 @@ The system uses a multi-tenant architecture with the following key tables:
 - **Autoscaling**: Configured for Replit autoscale deployment
 
 ### Database Management
-- **ORM**: Drizzle with PostgreSQL dialect
-- **Migrations**: Schema changes tracked in `migrations/` directory
-- **Connection**: Neon serverless with WebSocket support for edge environments
+- **ODM**: Mongoose with MongoDB
+- **Schema**: Defined in `shared/mongo-schema.ts` with validation
+- **Connection**: MongoDB Atlas with connection pooling and automatic reconnection
 
 ## Changelog
 
@@ -182,6 +182,13 @@ Changelog:
   * Updated authentication hooks to use new simple auth system without continuous polling
   * Disabled registration system completely - users can only login with predefined credentials
   * Fixed loading issues and simplified authentication flow for better performance
+- July 17, 2025. Migrated database system from PostgreSQL to MongoDB
+  * Replaced PostgreSQL/Drizzle ORM with MongoDB/Mongoose ODM
+  * Updated all database schemas and models to use MongoDB collections
+  * Fixed session storage to use in-memory store to avoid connection issues
+  * Converted all integer IDs to MongoDB ObjectIds throughout the application
+  * Updated storage layer to use MongoDB queries and operations
+  * Maintained all existing functionality while improving scalability
 ```
 
 ## User Preferences
