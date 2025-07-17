@@ -23,7 +23,7 @@ export default async () => {
       },
     },
     build: {
-      outDir: path.resolve(__dirname, "client", "dist", "public"),
+      outDir: path.resolve(__dirname, "client", "dist"),
       emptyOutDir: true,
     },
     server: {
