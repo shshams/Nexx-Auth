@@ -55,7 +55,7 @@ export default function SimpleLogin() {
       if (result.success) {
         toast({
           title: "Success",
-          description: "Login successful! Redirecting to dashboard...",
+          description: "Login successful!",
           variant: "default"
         });
         
@@ -68,10 +68,8 @@ export default function SimpleLogin() {
         localStorage.removeItem('user_logged_out');
         sessionStorage.removeItem('user_logged_out');
         
-        // Wait a moment for the toast to show, then redirect to home
-        setTimeout(() => {
-          setLocation('/');
-        }, 1500);
+        // Force a page refresh to reinitialize auth state
+        window.location.href = '/';
       } else {
         toast({
           title: "Error",

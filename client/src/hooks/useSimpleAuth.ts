@@ -1,34 +1,50 @@
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function useSimpleAuth() {
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Check if user is logged out
-    const isLoggedOut = localStorage.getItem('user_logged_out') === 'true';
-    if (isLoggedOut) {
+    // Quick initialization check
+    const checkAuth = async () => {
+      const isLoggedOut = localStorage.getItem('user_logged_out') === 'true';
+      
+      if (isLoggedOut) {
+        setIsAuthenticated(false);
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if user has valid session
+      try {
+        const response = await fetch('/api/auth/user', {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+      
       setIsLoading(false);
-    } else {
-      setIsLoading(false);
-    }
+    };
+
+    checkAuth();
   }, []);
 
-  // Check if user is logged out
-  const isLoggedOut = localStorage.getItem('user_logged_out') === 'true';
-
-  // Fetch user data from our backend
-  const { data: backendUser, isLoading: isBackendLoading, error } = useQuery({
-    queryKey: ["/api/auth/user"],
-    enabled: !isLoggedOut, // Only check if not manually logged out
-    retry: false, // Don't retry on auth errors
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-  });
-
-  // Determine if user is authenticated
-  const isAuthenticated = !isLoggedOut && !!backendUser;
+  // Don't use continuous polling - only check on mount and after login
 
   // Logout function
   const logout = async () => {
@@ -52,19 +68,18 @@ export function useSimpleAuth() {
       });
       
       // Redirect to login page
-      window.location.href = '/simple-login';
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout error:', error);
       // Still redirect even if backend logout fails
-      window.location.href = '/simple-login';
+      window.location.href = '/login';
     }
   };
 
   return {
-    user: backendUser,
-    isLoading: isLoading || (isBackendLoading && !isLoggedOut),
+    user,
+    isLoading,
     isAuthenticated,
-    logout,
-    error
+    logout
   };
 }

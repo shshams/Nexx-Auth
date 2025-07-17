@@ -12,7 +12,7 @@ export default function Landing() {
   const [showContent, setShowContent] = useState(false);
 
   const handleLogin = () => {
-    window.location.href = "/simple-login";
+    window.location.href = "/login";
   };
 
   const handleLoadingComplete = () => {
