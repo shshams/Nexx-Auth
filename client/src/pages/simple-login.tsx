@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Shield, LogIn, CheckCircle, Info, Users, Building, Globe } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useSimpleAuth } from "@/hooks/useSimpleAuth";
 
 export default function SimpleLogin() {
   const [username, setUsername] = useState("");
@@ -13,6 +14,14 @@ export default function SimpleLogin() {
   const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { isAuthenticated } = useSimpleAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation('/');
+    }
+  }, [isAuthenticated, setLocation]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +123,7 @@ export default function SimpleLogin() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="username" className="text-sm font-medium text-gray-700">
                       Username
@@ -125,7 +134,7 @@ export default function SimpleLogin() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="Enter your username"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-nexx-primary focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexx-primary focus:border-transparent text-base"
                       required
                     />
                   </div>
@@ -140,7 +149,7 @@ export default function SimpleLogin() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-nexx-primary focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-nexx-primary focus:border-transparent text-base"
                       required
                     />
                   </div>
@@ -148,18 +157,12 @@ export default function SimpleLogin() {
                   <Button 
                     type="submit" 
                     disabled={loading}
-                    className="w-full bg-nexx-primary hover:bg-nexx-primary/90 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center space-x-2"
+                    className="w-full bg-nexx-primary hover:bg-nexx-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                   >
-                    <LogIn className="h-4 w-4" />
-                    <span>{loading ? "Signing in..." : "Sign In"}</span>
+                    <LogIn className="h-5 w-5" />
+                    <span>{loading ? "Signing in..." : "Continue with Nexx Auth"}</span>
                   </Button>
                 </form>
-
-                <div className="mt-6 text-center">
-                  <p className="text-sm text-gray-600">
-                    Demo credentials: user101 / mypassword
-                  </p>
-                </div>
               </CardContent>
             </Card>
           </div>
