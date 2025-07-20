@@ -14,8 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Settings, ArrowLeft, Users, Activity, Eye, EyeOff, MoreHorizontal, Trash2, Pause, Play, Key, Shield, Plus, UserPlus } from "lucide-react";
+import { Copy, Settings, ArrowLeft, Users, Activity, Eye, EyeOff, MoreHorizontal, Trash2, Pause, Play, Key, Shield, Plus, UserPlus, CheckSquare } from "lucide-react";
 import Header from "@/components/header";
 import AdvancedParticleBackground from "@/components/AdvancedParticleBackground";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -93,6 +94,11 @@ export default function AppManagement() {
     expiresAt: "",
     hwid: ""
   });
+
+  // Bulk selection state for users
+  const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
+  const [isAllUsersSelected, setIsAllUsersSelected] = useState(false);
+  const [isBulkDeleteUsersDialogOpen, setIsBulkDeleteUsersDialogOpen] = useState(false);
 
   // Get application ID from URL
   const appId = window.location.pathname.split('/')[2];
@@ -210,7 +216,7 @@ export default function AppManagement() {
   const resetHwidMutation = useMutation({
     mutationFn: (userId: number) => 
       apiRequest(`/api/applications/${appId}/users/${userId}/reset-hwid`, {
-        method: 'PATCH',
+        method: 'POST',
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/applications/${appId}/users`] });
@@ -256,6 +262,61 @@ export default function AppManagement() {
       });
     }
   });
+
+  // Bulk delete users mutation
+  const bulkDeleteUsersMutation = useMutation({
+    mutationFn: (userIds: number[]) => 
+      apiRequest(`/api/applications/${appId}/users/bulk-delete`, {
+        method: 'POST',
+        body: { userIds },
+      }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/applications/${appId}/users`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/applications/${appId}/stats`] });
+      setSelectedUsers(new Set());
+      setIsAllUsersSelected(false);
+      setIsBulkDeleteUsersDialogOpen(false);
+      toast({ 
+        title: "Users deleted successfully", 
+        description: `${data?.deletedCount || selectedUsers.size} user(s) deleted`
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to delete users", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Handle bulk user selection
+  const handleUserSelection = (userId: number, checked: boolean) => {
+    const newSelected = new Set(selectedUsers);
+    if (checked) {
+      newSelected.add(userId);
+    } else {
+      newSelected.delete(userId);
+    }
+    setSelectedUsers(newSelected);
+    setIsAllUsersSelected(newSelected.size === appUsers.length && appUsers.length > 0);
+  };
+
+  const handleSelectAllUsers = (checked: boolean) => {
+    if (checked) {
+      const allUserIds = new Set(appUsers.map(user => user.id));
+      setSelectedUsers(allUserIds);
+      setIsAllUsersSelected(true);
+    } else {
+      setSelectedUsers(new Set());
+      setIsAllUsersSelected(false);
+    }
+  };
+
+  const handleBulkDeleteUsers = () => {
+    if (selectedUsers.size === 0) return;
+    bulkDeleteUsersMutation.mutate(Array.from(selectedUsers));
+  };
 
   useEffect(() => {
     if (application) {
@@ -685,105 +746,165 @@ export default function AppManagement() {
                     No users registered yet
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Username</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>HWID</TableHead>
-                        <TableHead>Expires</TableHead>
-                        <TableHead>Last Login</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {appUsers.map((user: AppUser) => (
-                        <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.username}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Badge variant={user.isActive ? "default" : "secondary"}>
-                                {user.isActive ? "Active" : "Inactive"}
-                              </Badge>
-                              {user.isPaused && (
-                                <Badge variant="outline">Paused</Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="font-mono text-xs">
-                              {user.hwid ? `${user.hwid.substring(0, 8)}...` : "Not set"}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {user.expiresAt ? new Date(user.expiresAt).toLocaleDateString() : "Never"}
-                          </TableCell>
-                          <TableCell>
-                            {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : "Never"}
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => user.isPaused ? unpauseUserMutation.mutate(user.id) : pauseUserMutation.mutate(user.id)}
+                  <>
+                    {/* Bulk Actions Bar */}
+                    {selectedUsers.size > 0 && (
+                      <div className="flex items-center justify-between p-4 mb-4 bg-muted rounded-lg">
+                        <span className="text-sm font-medium">
+                          {selectedUsers.size} user{selectedUsers.size > 1 ? 's' : ''} selected
+                        </span>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setSelectedUsers(new Set())}
+                          >
+                            Clear Selection
+                          </Button>
+                          <AlertDialog open={isBulkDeleteUsersDialogOpen} onOpenChange={setIsBulkDeleteUsersDialogOpen}>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Selected
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Users</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete {selectedUsers.size} user{selectedUsers.size > 1 ? 's' : ''}? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={handleBulkDeleteUsers}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  disabled={bulkDeleteUsersMutation.isPending}
                                 >
-                                  {user.isPaused ? (
-                                    <>
-                                      <Play className="mr-2 h-4 w-4" />
-                                      Unpause
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Pause className="mr-2 h-4 w-4" />
-                                      Pause
-                                    </>
-                                  )}
-                                </DropdownMenuItem>
-                                {user.hwid && (
-                                  <DropdownMenuItem onClick={() => resetHwidMutation.mutate(user.id)}>
-                                    <Shield className="mr-2 h-4 w-4" />
-                                    Reset HWID
-                                  </DropdownMenuItem>
-                                )}
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      Delete User
-                                    </DropdownMenuItem>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete User</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete {user.username}? This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => deleteUserMutation.mutate(user.id)}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
+                                  {bulkDeleteUsersMutation.isPending ? "Deleting..." : "Delete Users"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    )}
+
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12">
+                            <Checkbox
+                              checked={isAllUsersSelected}
+                              onCheckedChange={handleSelectAllUsers}
+                              aria-label="Select all users"
+                            />
+                          </TableHead>
+                          <TableHead>Username</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>HWID</TableHead>
+                          <TableHead>Expires</TableHead>
+                          <TableHead>Last Login</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {appUsers.map((user: AppUser) => (
+                          <TableRow key={user.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedUsers.has(user.id)}
+                                onCheckedChange={(checked) => handleUserSelection(user.id, checked as boolean)}
+                                aria-label={`Select ${user.username}`}
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium">{user.username}</TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Badge variant={user.isActive ? "default" : "secondary"}>
+                                  {user.isActive ? "Active" : "Inactive"}
+                                </Badge>
+                                {user.isPaused && (
+                                  <Badge variant="outline">Paused</Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="font-mono text-xs">
+                                {user.hwid ? `${user.hwid.substring(0, 8)}...` : "Not set"}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {user.expiresAt ? new Date(user.expiresAt).toLocaleDateString() : "Never"}
+                            </TableCell>
+                            <TableCell>
+                              {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : "Never"}
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => user.isPaused ? unpauseUserMutation.mutate(user.id) : pauseUserMutation.mutate(user.id)}
+                                  >
+                                    {user.isPaused ? (
+                                      <>
+                                        <Play className="mr-2 h-4 w-4" />
+                                        Unpause
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Pause className="mr-2 h-4 w-4" />
+                                        Pause
+                                      </>
+                                    )}
+                                  </DropdownMenuItem>
+                                  {user.hwid && (
+                                    <DropdownMenuItem onClick={() => resetHwidMutation.mutate(user.id)}>
+                                      <Shield className="mr-2 h-4 w-4" />
+                                      Reset HWID
+                                    </DropdownMenuItem>
+                                  )}
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete User
+                                      </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete User</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete {user.username}? This action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => deleteUserMutation.mutate(user.id)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -842,31 +963,69 @@ export default function AppManagement() {
             <Card>
               <CardHeader>
                 <CardTitle>Custom Messages</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Customize the messages shown to users in different authentication scenarios
+                </p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-sm font-medium">Login Success Message</Label>
-                  <Input value={application.loginSuccessMessage} readOnly />
+                  <Label htmlFor="loginSuccessMessage" className="text-sm font-medium">Login Success Message</Label>
+                  <Input
+                    id="loginSuccessMessage"
+                    value={editAppData.loginSuccessMessage || ""}
+                    onChange={(e) => setEditAppData(prev => ({ ...prev, loginSuccessMessage: e.target.value }))}
+                    placeholder="Login successful!"
+                  />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Login Failed Message</Label>
-                  <Input value={application.loginFailedMessage} readOnly />
+                  <Label htmlFor="loginFailedMessage" className="text-sm font-medium">Login Failed Message</Label>
+                  <Input
+                    id="loginFailedMessage"
+                    value={editAppData.loginFailedMessage || ""}
+                    onChange={(e) => setEditAppData(prev => ({ ...prev, loginFailedMessage: e.target.value }))}
+                    placeholder="Invalid credentials!"
+                  />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Account Disabled Message</Label>
-                  <Input value={application.accountDisabledMessage} readOnly />
+                  <Label htmlFor="accountDisabledMessage" className="text-sm font-medium">Account Disabled Message</Label>
+                  <Input
+                    id="accountDisabledMessage"
+                    value={editAppData.accountDisabledMessage || ""}
+                    onChange={(e) => setEditAppData(prev => ({ ...prev, accountDisabledMessage: e.target.value }))}
+                    placeholder="Account is disabled!"
+                  />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Account Expired Message</Label>
-                  <Input value={application.accountExpiredMessage} readOnly />
+                  <Label htmlFor="accountExpiredMessage" className="text-sm font-medium">Account Expired Message</Label>
+                  <Input
+                    id="accountExpiredMessage"
+                    value={editAppData.accountExpiredMessage || ""}
+                    onChange={(e) => setEditAppData(prev => ({ ...prev, accountExpiredMessage: e.target.value }))}
+                    placeholder="Account has expired!"
+                  />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Version Mismatch Message</Label>
-                  <Input value={application.versionMismatchMessage} readOnly />
+                  <Label htmlFor="versionMismatchMessage" className="text-sm font-medium">Version Mismatch Message</Label>
+                  <Input
+                    id="versionMismatchMessage"
+                    value={editAppData.versionMismatchMessage || ""}
+                    onChange={(e) => setEditAppData(prev => ({ ...prev, versionMismatchMessage: e.target.value }))}
+                    placeholder="Please update your application to the latest version!"
+                  />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">HWID Mismatch Message</Label>
-                  <Input value={application.hwidMismatchMessage} readOnly />
+                  <Label htmlFor="hwidMismatchMessage" className="text-sm font-medium">HWID Mismatch Message</Label>
+                  <Input
+                    id="hwidMismatchMessage"
+                    value={editAppData.hwidMismatchMessage || ""}
+                    onChange={(e) => setEditAppData(prev => ({ ...prev, hwidMismatchMessage: e.target.value }))}
+                    placeholder="Hardware ID mismatch detected!"
+                  />
+                </div>
+                <div className="flex justify-end pt-4">
+                  <Button onClick={handleUpdateApp} disabled={updateApplicationMutation.isPending}>
+                    {updateApplicationMutation.isPending ? "Updating..." : "Save Messages"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

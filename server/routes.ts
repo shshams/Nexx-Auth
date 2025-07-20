@@ -50,6 +50,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Debug auth - Headers:', req.headers);
       console.log('Debug auth - Session:', req.session);
       console.log('Debug auth - User:', req.user);
+      console.log('Debug auth - Session ID:', req.session?.id);
+      console.log('Debug auth - Session user:', (req.session as any)?.user);
       
       const accountId = req.headers['x-account-id'];
       if (accountId) {
@@ -59,7 +61,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: 'authenticated',
           method: 'account-id-header',
           accountId,
-          user
+          user,
+          sessionId: req.session?.id
         });
       }
       
@@ -67,17 +70,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({
           status: 'authenticated',
           method: 'session',
-          user: (req.session as any).user
+          user: (req.session as any).user,
+          sessionId: req.session.id
         });
       }
       
       res.json({
         status: 'not-authenticated',
         session: req.session,
-        headers: req.headers
+        sessionId: req.session?.id,
+        headers: req.headers,
+        cookies: req.headers.cookie
       });
     } catch (error) {
       console.error('Debug auth error:', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Session test endpoint
+  app.post('/api/debug/session-test', async (req: any, res) => {
+    try {
+      (req.session as any).testData = { timestamp: new Date().toISOString(), value: Math.random() };
+      
+      await new Promise((resolve, reject) => {
+        req.session.save((err: any) => {
+          if (err) reject(err);
+          else resolve(true);
+        });
+      });
+
+      res.json({
+        success: true,
+        message: "Session data saved",
+        sessionId: req.session.id,
+        testData: (req.session as any).testData
+      });
+    } catch (error) {
+      console.error('Session test error:', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  app.get('/api/debug/session-test', async (req: any, res) => {
+    try {
+      res.json({
+        sessionId: req.session?.id,
+        testData: (req.session as any)?.testData,
+        session: req.session
+      });
+    } catch (error) {
+      console.error('Session test error:', error);
       res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
@@ -193,6 +236,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+
   // Firebase authentication route
   app.post('/api/auth/firebase-login', async (req: any, res) => {
     try {
@@ -253,65 +298,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Logout function to handle both GET and POST requests
+  // Simple logout handler for HTTP environments
   const handleLogout = async (req: any, res: any) => {
     try {
       console.log(`${req.method} /api/logout - Session before destroy:`, req.session);
       
-      // Force clear session data immediately
       if (req.session) {
-        req.session.user = null;
         req.session.destroy((err: any) => {
           if (err) {
             console.error('Error destroying session:', err);
-          } else {
-            console.log("Session destroyed successfully");
+            return res.status(500).json({ success: false, message: "Failed to logout" });
           }
+          // Clear session cookie for HTTP environment
+          res.clearCookie('connect.sid', { 
+            path: '/', 
+            httpOnly: true, 
+            secure: false,
+            sameSite: 'lax'
+          });
+          console.log("Session destroyed successfully");
+          res.json({ success: true, message: "Logged out successfully" });
         });
+      } else {
+        res.json({ success: true, message: "Already logged out" });
       }
-      
-      // Clear all possible session cookies with multiple domain variations
-      const cookieOptions = [
-        { path: '/' },
-        { path: '/', domain: '.replit.app' },
-        { path: '/', domain: '.replit.dev' },
-        { path: '/', domain: '.replit.co' },
-        { path: '/', secure: false, httpOnly: true },
-        { path: '/', secure: true, httpOnly: true }
-      ];
-      
-      cookieOptions.forEach(options => {
-        res.clearCookie('connect.sid', options);
-        res.clearCookie('session', options);
-        res.clearCookie('.AuthSession', options);
-      });
-      
-      // Set comprehensive cache control headers
-      res.set({
-        'Cache-Control': 'no-store, no-cache, must-revalidate, private, max-age=0',
-        'Expires': 'Thu, 01 Jan 1970 00:00:00 GMT',
-        'Pragma': 'no-cache',
-        'Clear-Site-Data': '"cache", "cookies", "storage", "executionContexts"'
-      });
-      
-      // For GET requests, redirect to Firebase login page with logout flag
-      if (req.method === 'GET') {
-        console.log("GET logout - Redirecting to Firebase login");
-        return res.redirect('/firebase-login?logged_out=true');
-      }
-      
-      // For POST requests, return JSON
-      res.json({ 
-        success: true,
-        message: "Logged out successfully",
-        timestamp: new Date().toISOString()
-      });
     } catch (error) {
-      console.error("Error in logout:", error);
-      if (req.method === 'GET') {
-        return res.redirect('/?logout_error=true');
-      }
-      res.status(500).json({ success: false, message: "Failed to logout" });
+      console.error("Logout error:", error);
+      res.status(500).json({ success: false, message: "Logout failed" });
     }
   };
 
@@ -683,25 +696,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const { maxUsers = 1, validityDays, description } = req.body;
+      const { amountOfKeys = 1, maxUsers = 1, validityDays, description } = req.body;
       
       if (!validityDays || validityDays < 1) {
         return res.status(400).json({ message: "validityDays is required and must be greater than 0" });
       }
 
-      // Generate a secure license key
+      if (!amountOfKeys || amountOfKeys < 1 || amountOfKeys > 100) {
+        return res.status(400).json({ message: "amountOfKeys must be between 1 and 100" });
+      }
+
+      // Generate multiple license keys
       const { nanoid } = await import('nanoid');
       const appPrefix = application.name.toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 4);
-      const licenseKey = `${appPrefix}-${nanoid(8)}-${nanoid(8)}-${nanoid(8)}`;
-      
-      const license = await storage.createLicenseKey(applicationId, {
-        licenseKey,
-        maxUsers,
-        validityDays,
-        description
-      });
+      const createdLicenses = [];
 
-      res.status(201).json(license);
+      for (let i = 0; i < amountOfKeys; i++) {
+        const licenseKey = `${appPrefix}-${nanoid(8)}-${nanoid(8)}-${nanoid(8)}`;
+        
+        const license = await storage.createLicenseKey(applicationId, {
+          licenseKey,
+          maxUsers,
+          validityDays,
+          description: description ? `${description} (${i + 1}/${amountOfKeys})` : undefined
+        });
+        
+        createdLicenses.push(license);
+      }
+
+      res.status(201).json({
+        message: `Successfully created ${amountOfKeys} license key${amountOfKeys > 1 ? 's' : ''}`,
+        count: amountOfKeys,
+        licenses: createdLicenses
+      });
     } catch (error) {
       console.error("Error generating license key:", error);
       res.status(500).json({ message: "Failed to generate license key" });
@@ -738,6 +765,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting license key:", error);
       res.status(500).json({ message: "Failed to delete license key" });
+    }
+  });
+
+  // Bulk delete license keys
+  app.post('/api/applications/:id/licenses/bulk-delete', isAuthenticated, async (req: any, res) => {
+    try {
+      const applicationId = parseInt(req.params.id);
+      const { licenseIds } = req.body;
+      
+      if (!Array.isArray(licenseIds) || licenseIds.length === 0) {
+        return res.status(400).json({ message: "Invalid license IDs provided" });
+      }
+
+      const application = await storage.getApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
+      const userId = req.user.claims.sub;
+      if (application.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Verify all license keys belong to this application
+      const licenses = await Promise.all(
+        licenseIds.map(id => storage.getLicenseKey(id))
+      );
+      
+      const validLicenses = licenses.filter(license => 
+        license && license.applicationId === applicationId
+      );
+
+      if (validLicenses.length === 0) {
+        return res.status(404).json({ message: "No valid license keys found" });
+      }
+
+      // Delete all valid licenses
+      let deletedCount = 0;
+      for (const license of validLicenses) {
+        const deleted = await storage.deleteLicenseKey(license.id);
+        if (deleted) deletedCount++;
+      }
+
+      res.json({ 
+        message: `${deletedCount} license key(s) deleted successfully`,
+        deletedCount,
+        requestedCount: licenseIds.length
+      });
+    } catch (error) {
+      console.error("Error bulk deleting license keys:", error);
+      res.status(500).json({ message: "Failed to delete license keys" });
     }
   });
 
@@ -789,7 +867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process date conversion for expiresAt and handle empty email
       const processedData: any = { ...validatedData };
       if (processedData.expiresAt && typeof processedData.expiresAt === 'string') {
-        processedData.expiresAt = new Date(processedData.expiresAt);
+        processedData.expiresAt = new Date(processedData.expiresAt).getTime();
       }
       
       // Convert empty email string to null
@@ -983,6 +1061,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting app user:", error);
       res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Bulk delete app users
+  app.post('/api/applications/:id/users/bulk-delete', isAuthenticated, async (req: any, res) => {
+    try {
+      const applicationId = parseInt(req.params.id);
+      const { userIds } = req.body;
+      
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({ message: "userIds must be a non-empty array" });
+      }
+
+      const application = await storage.getApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
+      // Check if user owns this application
+      const ownerId = req.user.claims.sub;
+      if (application.userId !== ownerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Validate all users belong to this application
+      let validUserIds: number[] = [];
+      for (const userId of userIds) {
+        const user = await storage.getAppUser(parseInt(userId));
+        if (user && user.applicationId === applicationId) {
+          validUserIds.push(parseInt(userId));
+        }
+      }
+
+      if (validUserIds.length === 0) {
+        return res.status(404).json({ message: "No valid users found for deletion" });
+      }
+
+      // Delete all valid users
+      let deletedCount = 0;
+      for (const userId of validUserIds) {
+        const deleted = await storage.deleteAppUser(userId);
+        if (deleted) {
+          deletedCount++;
+        }
+      }
+
+      res.json({ 
+        message: `Successfully deleted ${deletedCount} user${deletedCount > 1 ? 's' : ''}`,
+        deletedCount,
+        requestedCount: userIds.length
+      });
+    } catch (error) {
+      console.error("Error bulk deleting app users:", error);
+      res.status(500).json({ message: "Failed to delete users" });
     }
   });
 
@@ -1213,7 +1345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check expiration
-      if (user.expiresAt && new Date() > user.expiresAt) {
+      if (user.expiresAt && Date.now() > user.expiresAt) {
         await webhookService.logAndNotify(
           application.userId,
           application.id,
@@ -1226,7 +1358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userAgent,
             hwid,
             metadata: {
-              expired_at: user.expiresAt.toISOString()
+              expired_at: new Date(user.expiresAt).toISOString()
             }
           }
         );
@@ -1243,7 +1375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Increment login attempts
         await storage.updateAppUser(user.id, { 
           loginAttempts: user.loginAttempts + 1,
-          lastLoginAttempt: new Date()
+          lastLoginAttempt: Date.now()
         });
         
         // Send failed login webhook notification
@@ -1283,6 +1415,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If user has no HWID set, set it on first login
         if (!user.hwid) {
           await storage.updateAppUser(user.id, { hwid });
+          // Update the user object to reflect the new HWID
+          user.hwid = hwid;
         } else if (user.hwid !== hwid) {
           // HWID mismatch - send webhook notification
           await webhookService.logAndNotify(
@@ -1312,9 +1446,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Reset login attempts on successful login and update last login
       await storage.updateAppUser(user.id, { 
-        lastLogin: new Date(),
+        lastLogin: Date.now(),
         loginAttempts: 0,
-        lastLoginAttempt: new Date()
+        lastLoginAttempt: Date.now()
       });
 
       // Send successful login webhook notification
@@ -1477,7 +1611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check expiration
-      if (user.expiresAt && new Date() > user.expiresAt) {
+      if (user.expiresAt && Date.now() > user.expiresAt) {
         return res.status(401).json({ success: false, message: "Account has expired" });
       }
 

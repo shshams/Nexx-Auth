@@ -55,8 +55,9 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Allow HTTP connections for external server deployment
       maxAge: sessionTtl,
+      sameSite: 'lax', // Better compatibility for cross-origin requests
     },
   });
 }
@@ -211,8 +212,9 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   // If not in Replit environment, check for valid session
   if (!isReplitEnvironment) {
-    // Allow access if there's a user session or account ID
-    if (req.session && ((req.session as any).user || accountId)) {
+    // Allow access if there's a user session
+    if (req.session && (req.session as any).user && (req.session as any).user.claims) {
+      req.user = (req.session as any).user;
       return next();
     }
     return res.status(401).json({ message: "Unauthorized" });

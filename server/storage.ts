@@ -107,6 +107,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    const now = Date.now();
+    
     // Set special permissions for mohitsindhu121@gmail.com
     const insertData: any = {
       id: userData.id,
@@ -115,15 +117,15 @@ export class DatabaseStorage implements IStorage {
       lastName: userData.lastName,
       profileImageUrl: userData.profileImageUrl,
       role: 'user',
-      permissions: [],
+      permissions: JSON.stringify([]),
       isActive: true,
-      createdAt: userData.createdAt,
-      updatedAt: userData.updatedAt
+      createdAt: now,
+      updatedAt: now
     };
 
     if (userData.email === 'mohitsindhu121@gmail.com') {
       insertData.role = 'owner';
-      insertData.permissions = [
+      insertData.permissions = JSON.stringify([
         'edit_code', 
         'manage_users', 
         'manage_applications', 
@@ -131,7 +133,7 @@ export class DatabaseStorage implements IStorage {
         'delete_applications', 
         'manage_permissions', 
         'access_admin_panel'
-      ];
+      ]);
       insertData.isActive = true;
     }
 
@@ -148,7 +150,7 @@ export class DatabaseStorage implements IStorage {
           role: insertData.role,
           permissions: insertData.permissions,
           isActive: insertData.isActive,
-          updatedAt: new Date(),
+          updatedAt: now,
         },
       })
       .returning();
@@ -160,9 +162,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: string, updates: Partial<UpsertUser>): Promise<User | undefined> {
+    const now = Date.now();
     const [user] = await db
       .update(users)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: now })
       .where(eq(users.id, id))
       .returning();
     return user;
@@ -170,7 +173,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: string): Promise<boolean> {
     const result = await db.delete(users).where(eq(users.id, id));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   // Application methods
@@ -185,22 +188,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createApplication(userId: string, insertApp: InsertApplication): Promise<Application> {
-    const apiKey = `phantom_${nanoid(32)}`;
+    const apiKey = `nexx_${nanoid(32)}`;
+    const now = Date.now();
     const [app] = await db
       .insert(applications)
       .values({
         ...insertApp,
         userId,
         apiKey,
+        createdAt: now,
+        updatedAt: now,
       })
       .returning();
     return app;
   }
 
   async updateApplication(id: number, updates: UpdateApplication): Promise<Application | undefined> {
+    const now = Date.now();
     const [app] = await db
       .update(applications)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: now })
       .where(eq(applications.id, id))
       .returning();
     return app;
@@ -208,7 +215,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteApplication(id: number): Promise<boolean> {
     const result = await db.delete(applications).where(eq(applications.id, id));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   async getAllApplications(userId: string): Promise<Application[]> {
@@ -217,8 +224,8 @@ export class DatabaseStorage implements IStorage {
 
   // License Key methods
   async createLicenseKey(applicationId: number, license: InsertLicenseKey): Promise<LicenseKey> {
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + license.validityDays);
+    const now = Date.now();
+    const expiresAt = now + (license.validityDays * 24 * 60 * 60 * 1000);
     
     const [licenseKey] = await db
       .insert(licenseKeys)
@@ -229,6 +236,8 @@ export class DatabaseStorage implements IStorage {
         validityDays: license.validityDays,
         description: license.description || null,
         expiresAt,
+        createdAt: now,
+        updatedAt: now,
       })
       .returning();
     return licenseKey;
@@ -249,15 +258,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateLicenseKey(id: number, updates: Partial<InsertLicenseKey>): Promise<LicenseKey | undefined> {
-    const updateData: any = { ...updates, updatedAt: new Date() };
+    const now = Date.now();
+    const updateData: any = { ...updates, updatedAt: now };
     
     // Recalculate expiry if validity days changed
     if (updates.validityDays) {
       const currentLicense = await this.getLicenseKey(id);
       if (currentLicense) {
-        const createdAt = new Date(currentLicense.createdAt);
-        const newExpiresAt = new Date(createdAt);
-        newExpiresAt.setDate(newExpiresAt.getDate() + updates.validityDays);
+        const createdAt = currentLicense.createdAt;
+        const newExpiresAt = createdAt + (updates.validityDays * 24 * 60 * 60 * 1000);
         updateData.expiresAt = newExpiresAt;
       }
     }
@@ -272,7 +281,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLicenseKey(id: number): Promise<boolean> {
     const result = await db.delete(licenseKeys).where(eq(licenseKeys.id, id));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   async validateLicenseKey(licenseKey: string, applicationId: number): Promise<LicenseKey | null> {
@@ -290,7 +299,7 @@ export class DatabaseStorage implements IStorage {
     if (!license) return null;
     
     // Check if license has expired
-    if (new Date() > new Date(license.expiresAt)) {
+    if (Date.now() > license.expiresAt) {
       return null;
     }
     
@@ -307,14 +316,15 @@ export class DatabaseStorage implements IStorage {
     const [license] = await db.select().from(licenseKeys).where(eq(licenseKeys.id, licenseKeyId));
     if (!license) return false;
     
+    const now = Date.now();
     const result = await db
       .update(licenseKeys)
       .set({ 
         currentUsers: license.currentUsers + 1,
-        updatedAt: new Date()
+        updatedAt: now
       })
       .where(eq(licenseKeys.id, licenseKeyId));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   async decrementLicenseUsage(licenseKeyId: number): Promise<boolean> {
@@ -322,14 +332,15 @@ export class DatabaseStorage implements IStorage {
     const [license] = await db.select().from(licenseKeys).where(eq(licenseKeys.id, licenseKeyId));
     if (!license) return false;
     
+    const now = Date.now();
     const result = await db
       .update(licenseKeys)
       .set({ 
         currentUsers: Math.max(0, license.currentUsers - 1),
-        updatedAt: new Date()
+        updatedAt: now
       })
       .where(eq(licenseKeys.id, licenseKeyId));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   // App User methods (updated with license support)
@@ -365,7 +376,7 @@ export class DatabaseStorage implements IStorage {
     const hashedPassword = await this.hashPassword(insertUser.password);
     
     // Set user expiry based on license expiry
-    const userExpiresAt = new Date(licenseKey.expiresAt);
+    const userExpiresAt = licenseKey.expiresAt;
     
     const [user] = await db
       .insert(appUsers)
@@ -377,6 +388,12 @@ export class DatabaseStorage implements IStorage {
         email: insertUser.email || null,
         hwid: insertUser.hwid || null,
         expiresAt: userExpiresAt,
+        createdAt: Date.now(),
+        lastLogin: null,
+        loginAttempts: 0,
+        lastLoginAttempt: null,
+        isActive: true,
+        isPaused: false,
       })
       .returning();
 
@@ -389,11 +406,12 @@ export class DatabaseStorage implements IStorage {
   // Create app user without license key (for admin creation)
   async createAppUser(applicationId: number, insertUser: InsertAppUser): Promise<AppUser> {
     const hashedPassword = await this.hashPassword(insertUser.password);
+    const now = Date.now();
     
     // Parse expiresAt if provided
     let userExpiresAt = null;
     if (insertUser.expiresAt) {
-      userExpiresAt = new Date(insertUser.expiresAt);
+      userExpiresAt = typeof insertUser.expiresAt === 'string' ? new Date(insertUser.expiresAt).getTime() : insertUser.expiresAt;
     }
     
     const [user] = await db
@@ -406,6 +424,12 @@ export class DatabaseStorage implements IStorage {
         email: insertUser.email || null,
         hwid: insertUser.hwid || null,
         expiresAt: userExpiresAt,
+        createdAt: now,
+        lastLogin: null,
+        loginAttempts: 0,
+        lastLoginAttempt: null,
+        isActive: true,
+        isPaused: false,
       })
       .returning();
     
@@ -421,7 +445,7 @@ export class DatabaseStorage implements IStorage {
     // Handle date conversion for expiresAt
     const processedUpdates: any = { ...updates };
     if (processedUpdates.expiresAt && typeof processedUpdates.expiresAt === 'string') {
-      processedUpdates.expiresAt = new Date(processedUpdates.expiresAt);
+      processedUpdates.expiresAt = new Date(processedUpdates.expiresAt).getTime();
     }
     
     const [user] = await db
@@ -437,7 +461,7 @@ export class DatabaseStorage implements IStorage {
       .update(appUsers)
       .set({ isPaused: true })
       .where(eq(appUsers.id, id));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   async unpauseAppUser(id: number): Promise<boolean> {
@@ -445,12 +469,12 @@ export class DatabaseStorage implements IStorage {
       .update(appUsers)
       .set({ isPaused: false })
       .where(eq(appUsers.id, id));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   async deleteAppUser(id: number): Promise<boolean> {
     const result = await db.delete(appUsers).where(eq(appUsers.id, id));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   async resetAppUserHwid(id: number): Promise<boolean> {
@@ -458,7 +482,7 @@ export class DatabaseStorage implements IStorage {
       .update(appUsers)
       .set({ hwid: null })
       .where(eq(appUsers.id, id));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   async setAppUserHwid(id: number, hwid: string): Promise<boolean> {
@@ -466,7 +490,7 @@ export class DatabaseStorage implements IStorage {
       .update(appUsers)
       .set({ hwid })
       .where(eq(appUsers.id, id));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   async getAllAppUsers(applicationId: number): Promise<AppUser[]> {
@@ -475,9 +499,15 @@ export class DatabaseStorage implements IStorage {
 
   // Webhook methods
   async createWebhook(userId: string, webhook: InsertWebhook): Promise<Webhook> {
+    const now = Date.now();
     const [newWebhook] = await db
       .insert(webhooks)
-      .values({ ...webhook, userId })
+      .values({ 
+        ...webhook, 
+        userId,
+        createdAt: now,
+        updatedAt: now
+      })
       .returning();
     return newWebhook;
   }
@@ -487,9 +517,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateWebhook(id: number, updates: Partial<InsertWebhook>): Promise<Webhook | undefined> {
+    const now = Date.now();
     const [webhook] = await db
       .update(webhooks)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: now })
       .where(eq(webhooks.id, id))
       .returning();
     return webhook;
@@ -497,14 +528,18 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWebhook(id: number): Promise<boolean> {
     const result = await db.delete(webhooks).where(eq(webhooks.id, id));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   // Blacklist methods
   async createBlacklistEntry(entry: InsertBlacklistEntry): Promise<BlacklistEntry> {
+    const now = Date.now();
     const [newEntry] = await db
       .insert(blacklist)
-      .values(entry)
+      .values({
+        ...entry,
+        createdAt: now
+      })
       .returning();
     return newEntry;
   }
@@ -533,14 +568,32 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBlacklistEntry(id: number): Promise<boolean> {
     const result = await db.delete(blacklist).where(eq(blacklist.id, id));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   // Activity logging methods
   async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {
+    const now = Date.now();
+    
+    // Clean the log data to ensure all fields are properly formatted
+    const cleanLog = {
+      applicationId: log.applicationId,
+      appUserId: log.appUserId || null,
+      event: log.event,
+      ipAddress: log.ipAddress || null,
+      hwid: log.hwid || null,
+      userAgent: log.userAgent || null,
+      metadata: log.metadata || null,
+      success: log.success !== undefined ? log.success : true,
+      errorMessage: log.errorMessage || null,
+      createdAt: now
+    };
+    
+
+    
     const [newLog] = await db
       .insert(activityLogs)
-      .values(log)
+      .values(cleanLog)
       .returning();
     return newLog;
   }
@@ -565,9 +618,14 @@ export class DatabaseStorage implements IStorage {
 
   // Session tracking methods
   async createActiveSession(session: Omit<ActiveSession, 'id' | 'createdAt' | 'lastActivity'>): Promise<ActiveSession> {
+    const now = Date.now();
     const [newSession] = await db
       .insert(activeSessions)
-      .values(session)
+      .values({
+        ...session,
+        createdAt: now,
+        lastActivity: now
+      })
       .returning();
     return newSession;
   }
@@ -585,11 +643,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSessionActivity(sessionToken: string): Promise<boolean> {
+    const now = Date.now();
     const result = await db
       .update(activeSessions)
-      .set({ lastActivity: new Date() })
+      .set({ lastActivity: now })
       .where(eq(activeSessions.sessionToken, sessionToken));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   async endSession(sessionToken: string): Promise<boolean> {
@@ -597,7 +656,7 @@ export class DatabaseStorage implements IStorage {
       .update(activeSessions)
       .set({ isActive: false })
       .where(eq(activeSessions.sessionToken, sessionToken));
-    return (result.rowCount || 0) > 0;
+    return (result.changes || 0) > 0;
   }
 
   // Auth methods

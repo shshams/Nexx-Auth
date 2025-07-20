@@ -366,9 +366,16 @@ export class WebhookService {
         delete logData.appUserId;
       }
       
+      // Convert metadata to JSON string if it's an object
+      if (logData.metadata && typeof logData.metadata === 'object') {
+        logData.metadata = JSON.stringify(logData.metadata);
+      }
+      
+
       await storage.createActivityLog(logData);
     } catch (error) {
       console.error('Failed to log activity:', error);
+      console.error('Activity data that failed:', activityData);
       // Don't throw the error - continue with webhook delivery even if logging fails
     }
   }

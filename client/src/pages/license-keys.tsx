@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Copy, Key, Users, Calendar, Zap } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Trash2, Copy, Key, Users, Calendar, Zap, CheckSquare } from "lucide-react";
 import Header from "@/components/header";
 import AdvancedParticleBackground from "@/components/AdvancedParticleBackground";
 
@@ -37,10 +38,16 @@ export default function LicenseKeys() {
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     licenseKey: "",
+    amountOfKeys: 1,
     maxUsers: 1,
     validityDays: 30,
     description: ""
   });
+
+  // Bulk selection state for license keys
+  const [selectedLicenses, setSelectedLicenses] = useState<Set<number>>(new Set());
+  const [isAllLicensesSelected, setIsAllLicensesSelected] = useState(false);
+  const [isBulkDeleteLicensesDialogOpen, setIsBulkDeleteLicensesDialogOpen] = useState(false);
 
   // Fetch application details
   const { data: application } = useQuery({
@@ -63,7 +70,7 @@ export default function LicenseKeys() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/applications/${applicationId}/licenses`] });
-      setFormData({ licenseKey: "", maxUsers: 1, validityDays: 30, description: "" });
+      setFormData({ licenseKey: "", amountOfKeys: 1, maxUsers: 1, validityDays: 30, description: "" });
       setIsCreateDialogOpen(false);
       toast({
         title: "Success",
@@ -81,19 +88,19 @@ export default function LicenseKeys() {
 
   // Generate license key mutation
   const generateLicenseMutation = useMutation({
-    mutationFn: async (data: { maxUsers: number; validityDays: number; description?: string }) => {
+    mutationFn: async (data: { amountOfKeys: number; maxUsers: number; validityDays: number; description?: string }) => {
       return apiRequest(`/api/applications/${applicationId}/licenses/generate`, {
         method: "POST",
         body: data
       });
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/applications/${applicationId}/licenses`] });
-      setFormData({ licenseKey: "", maxUsers: 1, validityDays: 30, description: "" });
+      setFormData({ licenseKey: "", amountOfKeys: 1, maxUsers: 1, validityDays: 30, description: "" });
       setIsGenerateDialogOpen(false);
       toast({
         title: "Success",
-        description: "License key generated successfully",
+        description: data?.message || `License key${data?.count > 1 ? 's' : ''} generated successfully`,
       });
     },
     onError: (error: any) => {
@@ -128,6 +135,61 @@ export default function LicenseKeys() {
     },
   });
 
+  // Bulk delete license keys mutation
+  const bulkDeleteLicensesMutation = useMutation({
+    mutationFn: async (licenseIds: number[]) => {
+      return apiRequest(`/api/applications/${applicationId}/licenses/bulk-delete`, {
+        method: "POST",
+        body: { licenseIds }
+      });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/applications/${applicationId}/licenses`] });
+      setSelectedLicenses(new Set());
+      setIsAllLicensesSelected(false);
+      setIsBulkDeleteLicensesDialogOpen(false);
+      toast({
+        title: "Success",
+        description: `${data?.deletedCount || selectedLicenses.size} license key(s) deleted successfully`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete license keys",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle bulk license selection
+  const handleLicenseSelection = (licenseId: number, checked: boolean) => {
+    const newSelected = new Set(selectedLicenses);
+    if (checked) {
+      newSelected.add(licenseId);
+    } else {
+      newSelected.delete(licenseId);
+    }
+    setSelectedLicenses(newSelected);
+    setIsAllLicensesSelected(newSelected.size === licenseKeys.length && licenseKeys.length > 0);
+  };
+
+  const handleSelectAllLicenses = (checked: boolean) => {
+    if (checked) {
+      const allLicenseIds = new Set(licenseKeys.map(license => license.id));
+      setSelectedLicenses(allLicenseIds);
+      setIsAllLicensesSelected(true);
+    } else {
+      setSelectedLicenses(new Set());
+      setIsAllLicensesSelected(false);
+    }
+  };
+
+  const handleBulkDeleteLicenses = () => {
+    if (selectedLicenses.size === 0) return;
+    bulkDeleteLicensesMutation.mutate(Array.from(selectedLicenses));
+  };
+
   const handleCreateLicense = () => {
     if (!formData.licenseKey.trim()) {
       toast({
@@ -149,7 +211,16 @@ export default function LicenseKeys() {
       });
       return;
     }
+    if (formData.amountOfKeys < 1 || formData.amountOfKeys > 100) {
+      toast({
+        title: "Error",
+        description: "Amount of keys must be between 1 and 100",
+        variant: "destructive"
+      });
+      return;
+    }
     generateLicenseMutation.mutate({
+      amountOfKeys: formData.amountOfKeys,
       maxUsers: formData.maxUsers,
       validityDays: formData.validityDays,
       description: formData.description
@@ -206,6 +277,20 @@ export default function LicenseKeys() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="gen-amount">Amount of Keys</Label>
+                    <Input
+                      id="gen-amount"
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={formData.amountOfKeys}
+                      onChange={(e) => setFormData(prev => ({ ...prev, amountOfKeys: parseInt(e.target.value) || 1 }))}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Generate multiple license keys with the same specifications (max 100)
+                    </p>
+                  </div>
                   <div>
                     <Label htmlFor="gen-max-users">Maximum Users</Label>
                     <Input
@@ -387,41 +472,100 @@ export default function LicenseKeys() {
                 </Button>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>License Key</TableHead>
-                    <TableHead>Users</TableHead>
-                    <TableHead>Validity</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Expires</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {licenseKeys.map((license) => {
-                    const expired = isExpired(license.expiresAt);
-                    const remainingDays = getRemainingDays(license.expiresAt);
-                    
-                    return (
-                      <TableRow key={license.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <code className="bg-muted px-2 py-1 rounded text-sm">
-                              {license.licenseKey}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyToClipboard(license.licenseKey)}
+              <>
+                {/* Bulk Actions Bar */}
+                {selectedLicenses.size > 0 && (
+                  <div className="flex items-center justify-between p-4 mb-4 bg-muted rounded-lg">
+                    <span className="text-sm font-medium">
+                      {selectedLicenses.size} license key{selectedLicenses.size > 1 ? 's' : ''} selected
+                    </span>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setSelectedLicenses(new Set())}
+                      >
+                        Clear Selection
+                      </Button>
+                      <AlertDialog open={isBulkDeleteLicensesDialogOpen} onOpenChange={setIsBulkDeleteLicensesDialogOpen}>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Selected
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete License Keys</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete {selectedLicenses.size} license key{selectedLicenses.size > 1 ? 's' : ''}? This action cannot be undone and users with these licenses will lose access.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleBulkDeleteLicenses}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              disabled={bulkDeleteLicensesMutation.isPending}
                             >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          {license.description && (
-                            <p className="text-sm text-muted-foreground mt-1">{license.description}</p>
-                          )}
-                        </TableCell>
+                              {bulkDeleteLicensesMutation.isPending ? "Deleting..." : "Delete License Keys"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                )}
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={isAllLicensesSelected}
+                          onCheckedChange={handleSelectAllLicenses}
+                          aria-label="Select all license keys"
+                        />
+                      </TableHead>
+                      <TableHead>License Key</TableHead>
+                      <TableHead>Users</TableHead>
+                      <TableHead>Validity</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Expires</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {licenseKeys.map((license) => {
+                      const expired = isExpired(license.expiresAt);
+                      const remainingDays = getRemainingDays(license.expiresAt);
+                      
+                      return (
+                        <TableRow key={license.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedLicenses.has(license.id)}
+                              onCheckedChange={(checked) => handleLicenseSelection(license.id, checked as boolean)}
+                              aria-label={`Select license ${license.licenseKey}`}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <code className="bg-muted px-2 py-1 rounded text-sm">
+                                {license.licenseKey}
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyToClipboard(license.licenseKey)}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            {license.description && (
+                              <p className="text-sm text-muted-foreground mt-1">{license.description}</p>
+                            )}
+                          </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
                             <span className="font-medium">{license.currentUsers}/{license.maxUsers}</span>
@@ -490,8 +634,9 @@ export default function LicenseKeys() {
                       </TableRow>
                     );
                   })}
-                </TableBody>
-              </Table>
+                  </TableBody>
+                </Table>
+              </>
             )}
           </CardContent>
         </Card>
