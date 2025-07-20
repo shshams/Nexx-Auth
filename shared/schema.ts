@@ -82,6 +82,7 @@ export const appUsers = sqliteTable("app_users", {
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   isPaused: integer("is_paused", { mode: "boolean" }).notNull().default(false),
   hwid: text("hwid"), // Hardware ID for locking
+  lastLoginIp: text("last_login_ip"), // IP address from last login
   expiresAt: integer("expires_at"), // Time limit for user validity (inherited from license)
   createdAt: integer("created_at").notNull().default(Date.now()),
   lastLogin: integer("last_login"),
@@ -175,6 +176,7 @@ export const insertApplicationSchema = createInsertSchema(applications).pick({
   accountExpiredMessage: true,
   versionMismatchMessage: true,
   hwidMismatchMessage: true,
+  pauseUserMessage: true,
 });
 
 export const insertLicenseKeySchema = createInsertSchema(licenseKeys).pick({
@@ -211,6 +213,7 @@ export const updateApplicationSchema = createInsertSchema(applications).pick({
   accountExpiredMessage: true,
   versionMismatchMessage: true,
   hwidMismatchMessage: true,
+  pauseUserMessage: true,
 }).partial();
 
 export const updateAppUserSchema = createInsertSchema(appUsers).pick({
@@ -222,6 +225,7 @@ export const updateAppUserSchema = createInsertSchema(appUsers).pick({
   hwid: true,
   expiresAt: true,
   lastLogin: true,
+  lastLoginIp: true,
   loginAttempts: true,
   lastLoginAttempt: true,
 }).partial().extend({

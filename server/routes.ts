@@ -696,10 +696,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const { amountOfKeys = 1, maxUsers = 1, validityDays, description } = req.body;
+      const { amountOfKeys = 1, maxUsers = 1, expiresAt, description } = req.body;
       
-      if (!validityDays || validityDays < 1) {
-        return res.status(400).json({ message: "validityDays is required and must be greater than 0" });
+      if (!expiresAt) {
+        return res.status(400).json({ message: "expiresAt is required" });
+      }
+
+      // Validate that expiresAt is in the future
+      const expirationTime = new Date(expiresAt).getTime();
+      if (expirationTime <= Date.now()) {
+        return res.status(400).json({ message: "expiresAt must be in the future" });
       }
 
       if (!amountOfKeys || amountOfKeys < 1 || amountOfKeys > 100) {
@@ -717,7 +723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const license = await storage.createLicenseKey(applicationId, {
           licenseKey,
           maxUsers,
-          validityDays,
+          expiresAt,
           description: description ? `${description} (${i + 1}/${amountOfKeys})` : undefined
         });
         
@@ -1277,8 +1283,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = loginSchema.parse(req.body);
       const { username, password, version, hwid } = validatedData;
       
-      // Get client info
-      const ipAddress = req.ip || req.connection.remoteAddress;
+      // Get client info - check for real IP behind proxies/load balancers
+      const ipAddress = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                       req.headers['x-real-ip'] || 
+                       req.headers['x-client-ip'] || 
+                       req.connection.remoteAddress || 
+                       req.socket.remoteAddress || 
+                       req.ip;
       const userAgent = req.headers['user-agent'];
 
       console.log(`Login attempt - Username: ${username}, IP: ${ipAddress}, Version: ${version}, HWID: ${hwid ? hwid.substring(0, 8) + '...' : 'none'}`);
@@ -1448,7 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         return res.status(401).json({ 
           success: false, 
-          message: "Account is temporarily paused. Contact support." 
+          message: application.pauseUserMessage || "Account is temporarily paused. Contact support." 
         });
       }
 
@@ -1555,6 +1566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Reset login attempts on successful login and update last login
       await storage.updateAppUser(user.id, { 
         lastLogin: Date.now(),
+        lastLoginIp: ipAddress,
         loginAttempts: 0,
         lastLoginAttempt: Date.now()
       });
@@ -1669,7 +1681,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user,
         { 
           success: true, 
-          ipAddress: req.ip || req.connection.remoteAddress,
+          ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                     req.headers['x-real-ip'] || 
+                     req.headers['x-client-ip'] || 
+                     req.connection.remoteAddress || 
+                     req.socket.remoteAddress || 
+                     req.ip,
           userAgent: req.headers['user-agent'],
           hwid,
           metadata: {
@@ -1759,7 +1776,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           applicationId: application.id,
           appUserId: user.id,
           sessionToken: session_token,
-          ipAddress: req.ip || req.connection.remoteAddress,
+          ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                     req.headers['x-real-ip'] || 
+                     req.headers['x-client-ip'] || 
+                     req.connection.remoteAddress || 
+                     req.socket.remoteAddress || 
+                     req.ip,
           userAgent: req.headers['user-agent'] || '',
           location: null,
           hwid: null,
@@ -1775,7 +1797,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user,
           { 
             success: true, 
-            ipAddress: req.ip || req.connection.remoteAddress,
+            ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                       req.headers['x-real-ip'] || 
+                       req.headers['x-client-ip'] || 
+                       req.connection.remoteAddress || 
+                       req.socket.remoteAddress || 
+                       req.ip,
             userAgent: req.headers['user-agent'],
             metadata: {
               session_token: session_token,
@@ -1812,7 +1839,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             user,
             { 
               success: true, 
-              ipAddress: req.ip || req.connection.remoteAddress,
+              ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                         req.headers['x-real-ip'] || 
+                         req.headers['x-client-ip'] || 
+                         req.connection.remoteAddress || 
+                         req.socket.remoteAddress || 
+                         req.ip,
               userAgent: req.headers['user-agent'],
               metadata: {
                 session_token: session_token,
@@ -2196,52 +2228,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'user_login': {
           success: true,
           userData: { id: 1, username: 'test_user', email: 'test@example.com' },
-          options: { ipAddress: req.ip, userAgent: req.headers['user-agent'], hwid: 'TEST-HWID' }
+          options: { ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip, userAgent: req.headers['user-agent'], hwid: 'TEST-HWID' }
         },
         'login_failed': {
           success: false,
           userData: { id: 1, username: 'test_user', email: 'test@example.com' },
-          options: { success: false, errorMessage: 'Invalid password', ipAddress: req.ip, userAgent: req.headers['user-agent'] }
+          options: { success: false, errorMessage: 'Invalid password', ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip, userAgent: req.headers['user-agent'] }
         },
         'user_register': {
           success: true,
           userData: { id: 2, username: 'new_user', email: 'new@example.com' },
-          options: { ipAddress: req.ip, userAgent: req.headers['user-agent'] }
+          options: { ipAddress: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip, userAgent: req.headers['user-agent'] }
         },
         'account_disabled': {
           success: false,
           userData: { id: 1, username: 'disabled_user', email: 'disabled@example.com' },
-          options: { success: false, errorMessage: 'Account is disabled', ipAddress: req.ip, userAgent: req.headers['user-agent'] }
+          options: { success: false, errorMessage: 'Account is disabled', ipAddress: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip, userAgent: req.headers['user-agent'] }
         },
         'account_expired': {
           success: false,
           userData: { id: 1, username: 'expired_user', email: 'expired@example.com' },
-          options: { success: false, errorMessage: 'Account has expired', ipAddress: req.ip, userAgent: req.headers['user-agent'] }
+          options: { success: false, errorMessage: 'Account has expired', ipAddress: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip, userAgent: req.headers['user-agent'] }
         },
         'version_mismatch': {
           success: false,
           userData: { id: 1, username: 'test_user', email: 'test@example.com' },
-          options: { success: false, errorMessage: 'Version mismatch detected', ipAddress: req.ip, userAgent: req.headers['user-agent'] }
+          options: { success: false, errorMessage: 'Version mismatch detected', ipAddress: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip, userAgent: req.headers['user-agent'] }
         },
         'hwid_mismatch': {
           success: false,
           userData: { id: 1, username: 'test_user', email: 'test@example.com' },
-          options: { success: false, errorMessage: 'Hardware ID mismatch', ipAddress: req.ip, userAgent: req.headers['user-agent'] }
+          options: { success: false, errorMessage: 'Hardware ID mismatch', ipAddress: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip, userAgent: req.headers['user-agent'] }
         },
         'login_blocked_ip': {
           success: false,
           userData: { username: 'test_user' },
-          options: { success: false, errorMessage: 'IP address is blacklisted', ipAddress: req.ip, userAgent: req.headers['user-agent'] }
+          options: { success: false, errorMessage: 'IP address is blacklisted', ipAddress: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip, userAgent: req.headers['user-agent'] }
         },
         'login_blocked_username': {
           success: false,
           userData: { username: 'blocked_user' },
-          options: { success: false, errorMessage: 'Username is blacklisted', ipAddress: req.ip, userAgent: req.headers['user-agent'] }
+          options: { success: false, errorMessage: 'Username is blacklisted', ipAddress: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip, userAgent: req.headers['user-agent'] }
         },
         'login_blocked_hwid': {
           success: false,
           userData: { username: 'test_user' },
-          options: { success: false, errorMessage: 'Hardware ID is blacklisted', ipAddress: req.ip, userAgent: req.headers['user-agent'], hwid: 'BLOCKED-HWID' }
+          options: { success: false, errorMessage: 'Hardware ID is blacklisted', ipAddress: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip, userAgent: req.headers['user-agent'], hwid: 'BLOCKED-HWID' }
         }
       };
 
@@ -2287,7 +2319,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const requestInfo = {
-        client_ip: req.ip || req.connection.remoteAddress,
+        client_ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                   req.headers['x-real-ip'] || 
+                   req.headers['x-client-ip'] || 
+                   req.connection.remoteAddress || 
+                   req.socket.remoteAddress || 
+                   req.ip,
         user_agent: req.headers['user-agent'],
         country: req.headers['cf-ipcountry'] || "unknown",
         forwarded_for: req.headers['x-forwarded-for'],

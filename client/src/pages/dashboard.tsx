@@ -42,7 +42,8 @@ import {
   HardDrive,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  PauseCircle
 } from "lucide-react";
 
 interface Application {
@@ -59,6 +60,7 @@ interface Application {
   accountExpiredMessage: string;
   versionMismatchMessage: string;
   hwidMismatchMessage: string;
+  pauseUserMessage: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1103,6 +1105,19 @@ export default function Dashboard() {
                         onChange={(e) => setEditingApp({...editingApp, hwidMismatchMessage: e.target.value})}
                       />
                     </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="edit-pause-msg" className="text-right">
+                        <PauseCircle className="h-4 w-4 mr-1 inline text-yellow-600" />
+                        User Paused
+                      </Label>
+                      <Input
+                        id="edit-pause-msg"
+                        defaultValue={editingApp.pauseUserMessage}
+                        placeholder="Account Is Paused Temporally. Contract Support"
+                        className="col-span-3"
+                        onChange={(e) => setEditingApp({...editingApp, pauseUserMessage: e.target.value})}
+                      />
+                    </div>
                   </TabsContent>
                 </Tabs>
               </div>
@@ -1124,7 +1139,8 @@ export default function Dashboard() {
                         accountDisabledMessage: editingApp.accountDisabledMessage,
                         accountExpiredMessage: editingApp.accountExpiredMessage,
                         versionMismatchMessage: editingApp.versionMismatchMessage,
-                        hwidMismatchMessage: editingApp.hwidMismatchMessage
+                        hwidMismatchMessage: editingApp.hwidMismatchMessage,
+                        pauseUserMessage: editingApp.pauseUserMessage
                       }
                     });
                   }

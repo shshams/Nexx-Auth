@@ -48,6 +48,7 @@ interface AppUser {
   isActive: boolean;
   isPaused: boolean;
   hwid?: string;
+  lastLoginIp?: string;
   expiresAt?: string;
   createdAt: string;
   lastLogin?: string;
@@ -87,6 +88,8 @@ export default function AppManagement() {
   const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [editAppData, setEditAppData] = useState<Partial<Application>>({});
+  const [showHwidDialog, setShowHwidDialog] = useState<{ open: boolean; hwid: string }>({ open: false, hwid: "" });
+  const [showIpDialog, setShowIpDialog] = useState<{ open: boolean; ip: string }>({ open: false, ip: "" });
   const [createUserData, setCreateUserData] = useState({
     username: "",
     password: "",
@@ -882,9 +885,9 @@ export default function AppManagement() {
                             />
                           </TableHead>
                           <TableHead>Username</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Status</TableHead>
+                          <TableHead>  Status</TableHead>
                           <TableHead>HWID</TableHead>
+                          <TableHead>IP Address</TableHead>
                           <TableHead>Expires</TableHead>
                           <TableHead>Last Login</TableHead>
                           <TableHead>Actions</TableHead>
@@ -901,7 +904,6 @@ export default function AppManagement() {
                               />
                             </TableCell>
                             <TableCell className="font-medium">{user.username}</TableCell>
-                            <TableCell>{user.email}</TableCell>
                             <TableCell>
                               <div className="flex gap-1">
                                 <Badge variant={user.isActive ? "default" : "secondary"}>
@@ -913,9 +915,32 @@ export default function AppManagement() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <span className="font-mono text-xs">
-                                {user.hwid ? `${user.hwid.substring(0, 8)}...` : "Not set"}
-                              </span>
+                              {user.hwid ? (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => setShowHwidDialog({ open: true, hwid: user.hwid || "" })}
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  Show
+                                </Button>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">Not set</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {user.lastLoginIp ? (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => setShowIpDialog({ open: true, ip: user.lastLoginIp || "" })}
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  Show
+                                </Button>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">No login yet</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               {user.expiresAt ? new Date(user.expiresAt).toLocaleDateString() : "Never"}
@@ -1121,6 +1146,68 @@ export default function AppManagement() {
           </TabsContent>
         </Tabs>
       </div>
+      {/* HWID Dialog */}
+      <Dialog open={showHwidDialog.open} onOpenChange={(open) => setShowHwidDialog({ open, hwid: "" })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hardware ID</DialogTitle>
+            <DialogDescription>
+              This is the user's hardware identifier used for device locking.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <Label className="text-sm font-medium">HWID:</Label>
+              <div className="mt-2 font-mono text-sm break-all select-all">
+                {showHwidDialog.hwid}
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  navigator.clipboard.writeText(showHwidDialog.hwid);
+                  toast({ title: "Copied", description: "HWID copied to clipboard" });
+                }}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* IP Address Dialog */}
+      <Dialog open={showIpDialog.open} onOpenChange={(open) => setShowIpDialog({ open, ip: "" })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>IP Address</DialogTitle>
+            <DialogDescription>
+              This is the user's last login IP address.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <Label className="text-sm font-medium">IP Address:</Label>
+              <div className="mt-2 font-mono text-lg break-all select-all">
+                {showIpDialog.ip}
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  navigator.clipboard.writeText(showIpDialog.ip);
+                  toast({ title: "Copied", description: "IP address copied to clipboard" });
+                }}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copy
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
