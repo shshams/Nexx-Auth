@@ -1,0 +1,39 @@
+
+{
+  "version": 2,
+  "env": {
+    "SESSION_SECRET": "HUTOU3IlvEJXM+yFAoaRKYieUbgqkxpnuW62/pCSvnWvXJrws/3tiq328nigeTOTPepFo11nCrW+cCOZXTJIKw==",
+    "VITE_FIREBASE_API_KEY": "AIzaSyAIJWT_ySG0q3KiV7zruFUN_KVkKyzgNME",
+    "VITE_FIREBASE_APP_ID": "1:286035027270:web:b41dc136cda3a3898bf147",
+    "VITE_FIREBASE_PROJECT_ID": "keyauth-acc44",
+    "DATABASE_URL": "postgresql://neondb_owner:npg_ZNHf7uDlkF4S@ep-bitter-truth-a8glqli4-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+  },
+  "builds": [
+    {
+      "src": "server/index.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "client/**/*",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/public"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "server/index.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "dist/public/$1"
+    }
+  ],
+  "functions": {
+    "server/index.ts": {
+      "maxDuration": 10
+    }
+  }
+}
