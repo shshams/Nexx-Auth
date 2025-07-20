@@ -211,6 +211,18 @@ Changelog:
   * Verified HWID locking works correctly: first login sets HWID, subsequent logins with same HWID succeed, different HWID properly blocked
   * Enhanced activity logging with proper data cleaning and debugging to ensure all database operations succeed
   * All authentication flows now working perfectly with comprehensive logging and webhook integration
+- July 20, 2025. Enhanced bulk actions and custom messaging system
+  * Redesigned bulk actions UI with dropdown menu: Clear Selection button + 3-dot menu with Delete, Pause, and Unpause options
+  * Added bulk pause/unpause functionality with new backend endpoints for batch user operations
+  * Implemented pauseUserMessage field in database schema and Messages tab for customizable pause notifications
+  * Added database migration to support new pause_user_message column with default value "Account Is Paused Temporally. Contract Support"
+  * All bulk actions now working with proper error handling and user feedback
+- July 20, 2025. Updated license key system and API configuration
+  * Changed "Validity Days" field to "Expires At" date picker in both Generate and Create Custom License Key forms
+  * Updated backend logic to handle expiresAt datetime input instead of calculating from validity days
+  * Modified API Configuration Base URL from "url/api/auth" to just "url" for cleaner integration
+  * Enhanced schema validation to support both expiresAt string/number and optional validityDays
+  * Improved user experience with date picker matching Create User form pattern
 ```
 
 ## User Preferences

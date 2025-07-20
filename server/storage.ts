@@ -225,7 +225,27 @@ export class DatabaseStorage implements IStorage {
   // License Key methods
   async createLicenseKey(applicationId: number, license: InsertLicenseKey): Promise<LicenseKey> {
     const now = Date.now();
-    const expiresAt = now + (license.validityDays * 24 * 60 * 60 * 1000);
+    
+    // Calculate expiration: use provided expiresAt or calculate from validityDays
+    let expiresAt: number;
+    let validityDays: number;
+    
+    if (license.expiresAt) {
+      // If expiresAt is provided (as string or number), use it
+      if (typeof license.expiresAt === 'string') {
+        expiresAt = new Date(license.expiresAt).getTime();
+      } else {
+        expiresAt = license.expiresAt;
+      }
+      // Calculate validity days for storage
+      validityDays = Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000));
+    } else if (license.validityDays) {
+      // Fall back to validityDays calculation
+      validityDays = license.validityDays;
+      expiresAt = now + (validityDays * 24 * 60 * 60 * 1000);
+    } else {
+      throw new Error('Either expiresAt or validityDays must be provided');
+    }
     
     const [licenseKey] = await db
       .insert(licenseKeys)
@@ -233,7 +253,7 @@ export class DatabaseStorage implements IStorage {
         applicationId,
         licenseKey: license.licenseKey,
         maxUsers: license.maxUsers,
-        validityDays: license.validityDays,
+        validityDays,
         description: license.description || null,
         expiresAt,
         createdAt: now,

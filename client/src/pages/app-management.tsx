@@ -36,6 +36,7 @@ interface Application {
   accountExpiredMessage: string;
   versionMismatchMessage: string;
   hwidMismatchMessage: string;
+  pauseUserMessage: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -290,6 +291,58 @@ export default function AppManagement() {
     }
   });
 
+  // Bulk pause users mutation
+  const bulkPauseUsersMutation = useMutation({
+    mutationFn: (userIds: number[]) => 
+      apiRequest(`/api/applications/${appId}/users/bulk-pause`, {
+        method: 'POST',
+        body: { userIds },
+      }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/applications/${appId}/users`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/applications/${appId}/stats`] });
+      setSelectedUsers(new Set());
+      setIsAllUsersSelected(false);
+      toast({ 
+        title: "Users paused successfully", 
+        description: `${data?.pausedCount || selectedUsers.size} user(s) paused`
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to pause users", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Bulk unpause users mutation
+  const bulkUnpauseUsersMutation = useMutation({
+    mutationFn: (userIds: number[]) => 
+      apiRequest(`/api/applications/${appId}/users/bulk-unpause`, {
+        method: 'POST',
+        body: { userIds },
+      }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/applications/${appId}/users`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/applications/${appId}/stats`] });
+      setSelectedUsers(new Set());
+      setIsAllUsersSelected(false);
+      toast({ 
+        title: "Users unpaused successfully", 
+        description: `${data?.unpausedCount || selectedUsers.size} user(s) unpaused`
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to unpause users", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
   // Handle bulk user selection
   const handleUserSelection = (userId: number, checked: boolean) => {
     const newSelected = new Set(selectedUsers);
@@ -316,6 +369,16 @@ export default function AppManagement() {
   const handleBulkDeleteUsers = () => {
     if (selectedUsers.size === 0) return;
     bulkDeleteUsersMutation.mutate(Array.from(selectedUsers));
+  };
+
+  const handleBulkPauseUsers = () => {
+    if (selectedUsers.size === 0) return;
+    bulkPauseUsersMutation.mutate(Array.from(selectedUsers));
+  };
+
+  const handleBulkUnpauseUsers = () => {
+    if (selectedUsers.size === 0) return;
+    bulkUnpauseUsersMutation.mutate(Array.from(selectedUsers));
   };
 
   useEffect(() => {
@@ -761,32 +824,49 @@ export default function AppManagement() {
                           >
                             Clear Selection
                           </Button>
-                          <AlertDialog open={isBulkDeleteUsersDialogOpen} onOpenChange={setIsBulkDeleteUsersDialogOpen}>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="sm">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Selected
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Users</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete {selectedUsers.size} user{selectedUsers.size > 1 ? 's' : ''}? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={handleBulkDeleteUsers}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  disabled={bulkDeleteUsersMutation.isPending}
-                                >
-                                  {bulkDeleteUsersMutation.isPending ? "Deleting..." : "Delete Users"}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <AlertDialog open={isBulkDeleteUsersDialogOpen} onOpenChange={setIsBulkDeleteUsersDialogOpen}>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Selected
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Users</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete {selectedUsers.size} user{selectedUsers.size > 1 ? 's' : ''}? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={handleBulkDeleteUsers}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      disabled={bulkDeleteUsersMutation.isPending}
+                                    >
+                                      {bulkDeleteUsersMutation.isPending ? "Deleting..." : "Delete Users"}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                              <DropdownMenuItem onClick={handleBulkPauseUsers} disabled={bulkPauseUsersMutation.isPending}>
+                                <Pause className="mr-2 h-4 w-4" />
+                                Pause Users
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={handleBulkUnpauseUsers} disabled={bulkUnpauseUsersMutation.isPending}>
+                                <Play className="mr-2 h-4 w-4" />
+                                Unpause Users
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     )}
@@ -944,7 +1024,7 @@ export default function AppManagement() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Base URL</Label>
-                  <Input value={`${window.location.origin}/api/auth`} readOnly />
+                  <Input value={`${window.location.origin}`} readOnly />
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Login Endpoint</Label>
@@ -1020,6 +1100,15 @@ export default function AppManagement() {
                     value={editAppData.hwidMismatchMessage || ""}
                     onChange={(e) => setEditAppData(prev => ({ ...prev, hwidMismatchMessage: e.target.value }))}
                     placeholder="Hardware ID mismatch detected!"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="pauseUserMessage" className="text-sm font-medium">Pause User Message</Label>
+                  <Input
+                    id="pauseUserMessage"
+                    value={editAppData.pauseUserMessage || ""}
+                    onChange={(e) => setEditAppData(prev => ({ ...prev, pauseUserMessage: e.target.value }))}
+                    placeholder="Account Is Paused Temporally. Contract Support"
                   />
                 </div>
                 <div className="flex justify-end pt-4">

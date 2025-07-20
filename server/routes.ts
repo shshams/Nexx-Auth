@@ -1118,6 +1118,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk pause users
+  app.post('/api/applications/:id/users/bulk-pause', isAuthenticated, async (req: any, res) => {
+    try {
+      const applicationId = parseInt(req.params.id);
+      const { userIds } = req.body;
+      
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({ message: "userIds must be a non-empty array" });
+      }
+
+      const application = await storage.getApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
+      // Check if user owns this application
+      const ownerId = req.user.claims.sub;
+      if (application.userId !== ownerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Validate all users belong to this application
+      let validUserIds: number[] = [];
+      for (const userId of userIds) {
+        const user = await storage.getAppUser(parseInt(userId));
+        if (user && user.applicationId === applicationId) {
+          validUserIds.push(parseInt(userId));
+        }
+      }
+
+      if (validUserIds.length === 0) {
+        return res.status(404).json({ message: "No valid users found for pausing" });
+      }
+
+      // Pause all valid users
+      let pausedCount = 0;
+      for (const userId of validUserIds) {
+        const paused = await storage.pauseAppUser(userId);
+        if (paused) {
+          pausedCount++;
+        }
+      }
+
+      res.json({ 
+        message: `Successfully paused ${pausedCount} user${pausedCount > 1 ? 's' : ''}`,
+        pausedCount,
+        requestedCount: userIds.length
+      });
+    } catch (error) {
+      console.error("Error bulk pausing app users:", error);
+      res.status(500).json({ message: "Failed to pause users" });
+    }
+  });
+
+  // Bulk unpause users
+  app.post('/api/applications/:id/users/bulk-unpause', isAuthenticated, async (req: any, res) => {
+    try {
+      const applicationId = parseInt(req.params.id);
+      const { userIds } = req.body;
+      
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({ message: "userIds must be a non-empty array" });
+      }
+
+      const application = await storage.getApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+
+      // Check if user owns this application
+      const ownerId = req.user.claims.sub;
+      if (application.userId !== ownerId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Validate all users belong to this application
+      let validUserIds: number[] = [];
+      for (const userId of userIds) {
+        const user = await storage.getAppUser(parseInt(userId));
+        if (user && user.applicationId === applicationId) {
+          validUserIds.push(parseInt(userId));
+        }
+      }
+
+      if (validUserIds.length === 0) {
+        return res.status(404).json({ message: "No valid users found for unpausing" });
+      }
+
+      // Unpause all valid users
+      let unpausedCount = 0;
+      for (const userId of validUserIds) {
+        const unpaused = await storage.unpauseAppUser(userId);
+        if (unpaused) {
+          unpausedCount++;
+        }
+      }
+
+      res.json({ 
+        message: `Successfully unpaused ${unpausedCount} user${unpausedCount > 1 ? 's' : ''}`,
+        unpausedCount,
+        requestedCount: userIds.length
+      });
+    } catch (error) {
+      console.error("Error bulk unpausing app users:", error);
+      res.status(500).json({ message: "Failed to unpause users" });
+    }
+  });
+
   // Reset user HWID
   app.post('/api/applications/:id/users/:userId/reset-hwid', isAuthenticated, async (req: any, res) => {
     try {

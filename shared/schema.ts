@@ -51,6 +51,7 @@ export const applications = sqliteTable("applications", {
   accountExpiredMessage: text("account_expired_message").default("Account has expired!"),
   versionMismatchMessage: text("version_mismatch_message").default("Please update your application to the latest version!"),
   hwidMismatchMessage: text("hwid_mismatch_message").default("Hardware ID mismatch detected!"),
+  pauseUserMessage: text("pause_user_message").default("Account Is Paused Temporally. Contract Support"),
   createdAt: integer("created_at").notNull().default(Date.now()),
   updatedAt: integer("updated_at").notNull().default(Date.now()),
 });
@@ -183,7 +184,8 @@ export const insertLicenseKeySchema = createInsertSchema(licenseKeys).pick({
   description: true,
 }).extend({
   maxUsers: z.number().min(1).default(1),
-  validityDays: z.number().min(1),
+  validityDays: z.number().min(1).optional(),
+  expiresAt: z.union([z.string(), z.number()]).optional(),
   description: z.string().optional().nullable(),
 });
 

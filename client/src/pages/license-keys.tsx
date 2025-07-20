@@ -40,7 +40,7 @@ export default function LicenseKeys() {
     licenseKey: "",
     amountOfKeys: 1,
     maxUsers: 1,
-    validityDays: 30,
+    expiresAt: "",
     description: ""
   });
 
@@ -70,7 +70,7 @@ export default function LicenseKeys() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/applications/${applicationId}/licenses`] });
-      setFormData({ licenseKey: "", amountOfKeys: 1, maxUsers: 1, validityDays: 30, description: "" });
+      setFormData({ licenseKey: "", amountOfKeys: 1, maxUsers: 1, expiresAt: "", description: "" });
       setIsCreateDialogOpen(false);
       toast({
         title: "Success",
@@ -88,7 +88,7 @@ export default function LicenseKeys() {
 
   // Generate license key mutation
   const generateLicenseMutation = useMutation({
-    mutationFn: async (data: { amountOfKeys: number; maxUsers: number; validityDays: number; description?: string }) => {
+    mutationFn: async (data: { amountOfKeys: number; maxUsers: number; expiresAt: string; description?: string }) => {
       return apiRequest(`/api/applications/${applicationId}/licenses/generate`, {
         method: "POST",
         body: data
@@ -96,7 +96,7 @@ export default function LicenseKeys() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [`/api/applications/${applicationId}/licenses`] });
-      setFormData({ licenseKey: "", amountOfKeys: 1, maxUsers: 1, validityDays: 30, description: "" });
+      setFormData({ licenseKey: "", amountOfKeys: 1, maxUsers: 1, expiresAt: "", description: "" });
       setIsGenerateDialogOpen(false);
       toast({
         title: "Success",
@@ -199,14 +199,38 @@ export default function LicenseKeys() {
       });
       return;
     }
+    if (!formData.expiresAt) {
+      toast({
+        title: "Error",
+        description: "Please select an expiration date",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (new Date(formData.expiresAt) <= new Date()) {
+      toast({
+        title: "Error",
+        description: "Expiration date must be in the future",
+        variant: "destructive"
+      });
+      return;
+    }
     createLicenseMutation.mutate(formData);
   };
 
   const handleGenerateLicense = () => {
-    if (formData.validityDays < 1) {
+    if (!formData.expiresAt) {
       toast({
         title: "Error",
-        description: "Validity days must be at least 1",
+        description: "Please select an expiration date",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (new Date(formData.expiresAt) <= new Date()) {
+      toast({
+        title: "Error",
+        description: "Expiration date must be in the future",
         variant: "destructive"
       });
       return;
@@ -222,7 +246,7 @@ export default function LicenseKeys() {
     generateLicenseMutation.mutate({
       amountOfKeys: formData.amountOfKeys,
       maxUsers: formData.maxUsers,
-      validityDays: formData.validityDays,
+      expiresAt: formData.expiresAt,
       description: formData.description
     });
   };
@@ -302,13 +326,12 @@ export default function LicenseKeys() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="gen-validity">Validity Days</Label>
+                    <Label htmlFor="gen-expires-at">Expires At</Label>
                     <Input
-                      id="gen-validity"
-                      type="number"
-                      min="1"
-                      value={formData.validityDays}
-                      onChange={(e) => setFormData(prev => ({ ...prev, validityDays: parseInt(e.target.value) || 1 }))}
+                      id="gen-expires-at"
+                      type="datetime-local"
+                      value={formData.expiresAt}
+                      onChange={(e) => setFormData(prev => ({ ...prev, expiresAt: e.target.value }))}
                     />
                   </div>
                   <div>
@@ -367,13 +390,12 @@ export default function LicenseKeys() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="validity">Validity Days</Label>
+                    <Label htmlFor="expires-at">Expires At</Label>
                     <Input
-                      id="validity"
-                      type="number"
-                      min="1"
-                      value={formData.validityDays}
-                      onChange={(e) => setFormData(prev => ({ ...prev, validityDays: parseInt(e.target.value) || 1 }))}
+                      id="expires-at"
+                      type="datetime-local"
+                      value={formData.expiresAt}
+                      onChange={(e) => setFormData(prev => ({ ...prev, expiresAt: e.target.value }))}
                     />
                   </div>
                   <div>
