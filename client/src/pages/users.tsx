@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Users as UsersIcon, Eye, EyeOff, MoreHorizontal, Trash2, Pause, Play, CheckSquare, X } from "lucide-react";
+import { Copy, Users as UsersIcon, Eye, EyeOff, MoreHorizontal, Trash2, Pause, Play, CheckSquare, X, Shield } from "lucide-react";
 import Header from "@/components/header";
 import AdvancedParticleBackground from "@/components/AdvancedParticleBackground";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -172,6 +172,26 @@ export default function Users() {
       toast({
         title: "Error",
         description: error.message || "Failed to unpause users",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Reset HWID mutation
+  const resetHwidMutation = useMutation({
+    mutationFn: async ({ userId, appId }: { userId: number; appId: number }) => {
+      return apiRequest(`/api/applications/${appId}/users/${userId}/reset-hwid`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/all-application-users"] });
+      toast({ title: "HWID reset successfully" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset HWID",
         variant: "destructive",
       });
     },
@@ -446,12 +466,6 @@ export default function Users() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
-                                  <DropdownMenuItem
-                                    onClick={() => deleteUserMutation.mutate({ userId: user.id, appId: application.id })}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
                                   {user.isPaused ? (
                                     <DropdownMenuItem
                                       onClick={() => bulkUnpauseUsersMutation.mutate({ userIds: [user.id], appId: application.id })}
@@ -467,6 +481,20 @@ export default function Users() {
                                       Pause
                                     </DropdownMenuItem>
                                   )}
+                                  {user.hwid && (
+                                    <DropdownMenuItem
+                                      onClick={() => resetHwidMutation.mutate({ userId: user.id, appId: application.id })}
+                                    >
+                                      <Shield className="h-4 w-4 mr-2" />
+                                      Reset HWID
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem
+                                    onClick={() => deleteUserMutation.mutate({ userId: user.id, appId: application.id })}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
