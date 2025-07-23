@@ -1,0 +1,20 @@
+[
+  {
+    "uid": "1118963541",
+    "username": "user101",
+    "email": "shahadathossenshams@gmail.com",
+    "password": "999"
+  },
+  {
+    "uid": "8756314756",
+    "username": "user102",
+    "email": "user102@primeauth.local",
+    "password": "mypassword2"
+  },
+  {
+    "uid": "0000000001",
+    "username": "admin",
+    "email": "admin@primeauth.local",
+    "password": "admin123"
+  }
+]
