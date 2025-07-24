@@ -1935,137 +1935,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid webhook URL format" });
       }
       
-      // Test webhook endpoint before creating (with enhanced private server support)
-      const isPrivateServer = process.env.NODE_ENV === 'development' || 
-                              req.get('host')?.includes('localhost') || 
-                              req.get('host')?.match(/^\d+\.\d+\.\d+\.\d+/) ||
-                              !req.get('host')?.includes('.replit.app');
-      
-      // Skip validation for private servers with Discord webhooks due to outbound connection limitations
-      if (isPrivateServer && validatedData.url.includes('discord.com')) {
-        console.log(`Skipping webhook validation on private server for Discord webhook: ${validatedData.url}`);
-        console.log(`Private server detected - Host: ${req.get('host')}, NODE_ENV: ${process.env.NODE_ENV}`);
-      } else {
-        try {
-          console.log(`Testing webhook URL: ${validatedData.url}`);
-          const isDiscordWebhook = validatedData.url.includes('discord.com/api/webhooks');
-          
-          let testPayload;
-          if (isDiscordWebhook) {
-            // Use Discord-compatible format for validation with content field
-            testPayload = {
-              content: "Prime Auth Webhook Validation Complete",
-              embeds: [{
-                title: "✅ Prime Auth Webhook Validation",
-                description: "This webhook endpoint has been successfully validated and registered with Prime Auth.",
-                color: 0x00ff00,
-                fields: [
-                  {
-                    name: "Status",
-                    value: "Webhook endpoint validated",
-                    inline: true
-                  },
-                  {
-                    name: "Server",
-                    value: isPrivateServer ? "Private/Local Server" : "Vietnam/India Optimized",
-                    inline: true
-                  },
-                  {
-                    name: "Connection Time",
-                    value: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-                    inline: false
-                  }
-                ],
-                footer: {
-                  text: "Prime Auth - Webhook Validation System"
+      // Test webhook endpoint before creating
+      try {
+        console.log(`Testing webhook URL: ${validatedData.url}`);
+        const isDiscordWebhook = validatedData.url.includes('discord.com/api/webhooks');
+        
+        let testPayload;
+        if (isDiscordWebhook) {
+          // Use Discord-compatible format for validation with content field
+          testPayload = {
+            content: "PhantomAuth Webhook Validation Complete",
+            embeds: [{
+              title: "✅ PhantomAuth Webhook Validation",
+              description: "This webhook endpoint has been successfully validated and registered with PhantomAuth.",
+              color: 0x00ff00,
+              fields: [
+                {
+                  name: "Status",
+                  value: "Webhook endpoint validated",
+                  inline: true
                 },
-                timestamp: new Date().toISOString()
-              }]
-            };
-          } else {
-            testPayload = {
-              test: true,
-              message: "Webhook endpoint validation test",
-              timestamp: new Date().toISOString(),
-              server_type: isPrivateServer ? "private" : "public"
-            };
-          }
-
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), isPrivateServer ? 10000 : 15000);
-
-          const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            'User-Agent': 'PrimeAuth-WebhookValidator/1.0',
-            'Accept': 'application/json, text/plain, */*',
-            'Connection': 'keep-alive'
+                {
+                  name: "Server",
+                  value: "Vietnam/India Optimized",
+                  inline: true
+                },
+                {
+                  name: "Connection Time",
+                  value: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+                  inline: false
+                }
+              ],
+              footer: {
+                text: "PhantomAuth - Webhook Validation System"
+              },
+              timestamp: new Date().toISOString()
+            }]
           };
+        } else {
+          testPayload = {
+            test: true,
+            message: "Webhook endpoint validation test",
+            timestamp: new Date().toISOString()
+          };
+        }
 
-          const response = await fetch(validatedData.url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(testPayload),
-            signal: controller.signal,
-            keepalive: true,
-            mode: 'cors'
-          });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout for India-Vietnam
 
-          clearTimeout(timeoutId);
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'User-Agent': 'PhantomAuth-WebhookValidator/1.0',
+          'Accept': 'application/json, text/plain, */*',
+          'Connection': 'keep-alive'
+        };
 
-          // For Discord webhooks, 204 is success, for others check if HTML response
-          if (isDiscordWebhook) {
-            if (response.status === 204 || response.status === 200) {
-              console.log(`Discord webhook validation successful: Status ${response.status}`);
-            } else {
-              const responseText = await response.text().catch(() => '');
-              return res.status(400).json({ 
-                message: "Discord webhook validation failed. Please verify the webhook URL is correct.",
-                details: `Status: ${response.status}, Response: ${responseText.substring(0, 200)}`
-              });
-            }
+        const response = await fetch(validatedData.url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(testPayload),
+          signal: controller.signal,
+          keepalive: true,
+          mode: 'cors'
+        });
+
+        clearTimeout(timeoutId);
+
+        // For Discord webhooks, 204 is success, for others check if HTML response
+        if (isDiscordWebhook) {
+          if (response.status === 204 || response.status === 200) {
+            console.log(`Discord webhook validation successful: Status ${response.status}`);
           } else {
-            // Check if response is HTML (common error)
-            const contentType = response.headers.get('content-type') || '';
-            const responseText = await response.text();
-            
-            if (responseText.includes('<!DOCTYPE') || responseText.includes('<html>')) {
-              return res.status(400).json({ 
-                message: "Webhook endpoint returned HTML instead of accepting JSON. Please verify the URL accepts POST requests with JSON payloads.",
-                details: `Status: ${response.status}, Content-Type: ${contentType}`
-              });
-            }
-          }
-
-          console.log(`Webhook test completed: Status ${response.status}`);
-          
-        } catch (testError) {
-          const errorMessage = testError instanceof Error ? testError.message : String(testError);
-          
-          // More lenient error handling for private servers and network issues
-          if (errorMessage.includes('AbortError') || 
-              errorMessage.includes('timeout') ||
-              errorMessage.includes('ENOTFOUND') ||
-              errorMessage.includes('ECONNREFUSED') ||
-              errorMessage.includes('fetch failed') ||
-              isPrivateServer) {
-            console.log(`Webhook URL test failed but allowing creation (${isPrivateServer ? 'private server' : 'network issue'}): ${validatedData.url}`);
-            console.log(`Error: ${errorMessage}`);
-          } else {
+            const responseText = await response.text().catch(() => '');
             return res.status(400).json({ 
-              message: "Webhook endpoint test failed. Please verify the URL is accessible and accepts POST requests.",
-              error: errorMessage
+              message: "Discord webhook validation failed. Please verify the webhook URL is correct.",
+              details: `Status: ${response.status}, Response: ${responseText.substring(0, 200)}`
+            });
+          }
+        } else {
+          // Check if response is HTML (common error)
+          const contentType = response.headers.get('content-type') || '';
+          const responseText = await response.text();
+          
+          if (responseText.includes('<!DOCTYPE') || responseText.includes('<html>')) {
+            return res.status(400).json({ 
+              message: "Webhook endpoint returned HTML instead of accepting JSON. Please verify the URL accepts POST requests with JSON payloads.",
+              details: `Status: ${response.status}, Content-Type: ${contentType}`
             });
           }
         }
+
+        console.log(`Webhook test completed: Status ${response.status}`);
+        
+      } catch (testError) {
+        const errorMessage = testError instanceof Error ? testError.message : String(testError);
+        
+        // Allow creation if it's just a timeout or network issue, but warn the user
+        if (errorMessage.includes('AbortError') || errorMessage.includes('timeout')) {
+          console.log(`Webhook URL test timed out, but allowing creation: ${validatedData.url}`);
+        } else {
+          return res.status(400).json({ 
+            message: "Webhook endpoint test failed. Please verify the URL is accessible and accepts POST requests.",
+            error: errorMessage
+          });
+        }
       }
       
-      // Convert events array to JSON string for database storage
-      const webhookData = {
-        ...validatedData,
-        events: JSON.stringify(validatedData.events)
-      };
-      
-      const webhook = await storage.createWebhook(userId, webhookData);
+      const webhook = await storage.createWebhook(userId, validatedData);
       res.status(201).json(webhook);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -2090,13 +2066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Webhook not found" });
       }
 
-      // Convert events array to JSON string for database storage if events are provided
-      const webhookUpdateData: any = { ...validatedData };
-      if (validatedData.events) {
-        webhookUpdateData.events = JSON.stringify(validatedData.events);
-      }
-
-      const updatedWebhook = await storage.updateWebhook(webhookId, webhookUpdateData);
+      const updatedWebhook = await storage.updateWebhook(webhookId, validatedData);
       if (!updatedWebhook) {
         return res.status(404).json({ message: "Webhook not found" });
       }
@@ -2465,9 +2435,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (isDiscordWebhook) {
             // Discord webhook format with content field to avoid empty message error
             testPayload = {
-              content: `Prime Auth Connectivity Test - ${config.name}`,
+              content: `PhantomAuth Connectivity Test - ${config.name}`,
               embeds: [{
-                title: "🔧 Prime Auth Connectivity Test",
+                title: "🔧 PhantomAuth Connectivity Test",
                 description: `Testing webhook connectivity from ${serverInfo.region || 'Vietnam'} server to India`,
                 color: 0x00ff00,
                 fields: [
@@ -2493,7 +2463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                 ],
                 footer: {
-                  text: "Prime Auth Webhook Diagnostics - India Vietnam Connectivity"
+                  text: "PhantomAuth Webhook Diagnostics - India Vietnam Connectivity"
                 },
                 timestamp: new Date().toISOString()
               }]
@@ -2503,7 +2473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             testPayload = {
               test: true,
               test_type: config.name,
-              message: "Vietnam Server Connectivity Test from Prime Auth",
+              message: "Vietnam Server Connectivity Test from PhantomAuth",
               timestamp: new Date().toISOString(),
               server_diagnostics: serverInfo,
               client_info: requestInfo
@@ -2520,7 +2490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               const headers: Record<string, string> = {
                 'Content-Type': 'application/json',
-                'User-Agent': 'PrimeAuth-IndiaVietnamDiagnostics/1.0',
+                'User-Agent': 'PhantomAuth-IndiaVietnamDiagnostics/1.0',
                 'Accept': 'application/json, text/plain, */*',
                 'Accept-Encoding': 'gzip, deflate, br',
                 'Connection': 'keep-alive',
@@ -2534,7 +2504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Don't add custom headers for Discord webhooks
               if (!isDiscordWebhook) {
                 headers['X-Webhook-Test'] = 'true';
-                headers['X-PrimeAuth-Diagnostics'] = '1.0';
+                headers['X-PhantomAuth-Diagnostics'] = '1.0';
               }
 
               const response = await fetch(webhook_url, {

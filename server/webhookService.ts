@@ -122,7 +122,7 @@ export class WebhookService {
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'User-Agent': 'PrimeAuth-Webhook/1.0 (Vietnam-Optimized)',
+        'User-Agent': 'PhantomAuth-Webhook/1.0 (Vietnam-Optimized)',
         'Accept': 'application/json',
         'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive',
